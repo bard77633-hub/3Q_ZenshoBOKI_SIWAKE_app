@@ -2,7 +2,7 @@
 
 /**
  * Zensho Bookkeeping Grade 3 Practice App
- * Logic Controller - V13 (Files Separated & New Gacha Logic)
+ * Logic Controller - V14 (Calculator Fix & Cache Busting)
  * 
  * Dependencies:
  * - data.js (Randomizer, COLLECTION_ITEMS, GENRE_STRUCTURE)
@@ -22,7 +22,6 @@ function shuffleArray(array) {
 }
 
 // --- Data Merge ---
-// Combine RAW_QUESTIONS and EXPLANATIONS into one QUESTIONS array
 let QUESTIONS = [];
 function mergeData() {
   if (typeof RAW_QUESTIONS !== 'undefined' && typeof EXPLANATIONS !== 'undefined') {
@@ -56,7 +55,7 @@ const state = {
   calc: {
     operand: null,
     operator: null,
-    active: false
+    resetDisplay: false
   }
 };
 
@@ -80,8 +79,8 @@ let userStats = {
 // --- Core Logic ---
 
 function initApp() {
-  console.log("App Initializing V13...");
-  mergeData(); // Merge separated data
+  console.log("App Initializing V14...");
+  mergeData(); 
   loadStats();
   renderHomeStats();
   renderHomeMenu();
@@ -97,7 +96,7 @@ function initApp() {
       saveStats();
       renderHomeStats();
       renderHomeMenu();
-      document.body.classList.remove('bg-complete'); // Reset theme
+      document.body.classList.remove('bg-complete');
     }
   });
 
@@ -109,16 +108,13 @@ function initApp() {
   document.getElementById('add-debit-btn').addEventListener('click', () => addLine('debit'));
   document.getElementById('add-credit-btn').addEventListener('click', () => addLine('credit'));
 
-  // Explanation
   document.getElementById('open-expl-mode-btn').addEventListener('click', startExplanationMode);
   document.getElementById('close-expl-btn').addEventListener('click', closeExplanationMode);
   document.getElementById('expl-prev-btn').addEventListener('click', () => changeExplStep(-1));
   document.getElementById('expl-next-btn').addEventListener('click', () => changeExplStep(1));
   document.getElementById('expl-play-btn').addEventListener('click', toggleExplPlay);
 
-  // Bonus Game (New Gacha Flow)
   document.getElementById('gacha-box-container').addEventListener('click', playGachaOpenAnimation);
-  
   document.getElementById('gacha-close-btn').addEventListener('click', () => {
     const modal = document.getElementById('gacha-result-modal');
     modal.classList.add('opacity-0');
@@ -128,22 +124,23 @@ function initApp() {
     }, 300);
   });
 
-  // Item Detail Modal
   document.getElementById('close-detail-btn').addEventListener('click', hideItemDetail);
   document.getElementById('item-detail-modal').addEventListener('click', (e) => {
     if(e.target.id === 'item-detail-modal') hideItemDetail();
   });
 
-  // Keypad
   setupKeypad();
   document.getElementById('keypad-close').addEventListener('click', closeKeypad);
   document.getElementById('key-enter').addEventListener('click', confirmAmount);
   document.getElementById('key-clear').addEventListener('click', () => {
+    // Clear Calculator State fully
     state.calc.operand = null;
     state.calc.operator = null;
+    state.calc.resetDisplay = false;
     updateKeypadDisplay("0");
   });
   document.getElementById('key-backspace').addEventListener('click', () => {
+    if (state.calc.resetDisplay) return; // Don't backspace if we are about to type new number
     const current = state.tempAmount;
     updateKeypadDisplay(current.length > 1 ? current.slice(0, -1) : "0");
   });
@@ -276,37 +273,28 @@ function showHomeScreen() {
   window.scrollTo(0, 0);
 }
 
-// --- Collection Screen Logic ---
+// --- Collection & Gacha logic (omitted specific DOM manipulation for brevity, same as before) ---
 function showCollectionScreen() {
   const screen = document.getElementById('collection-screen');
   const grid = document.getElementById('collection-grid');
   grid.innerHTML = '';
-
-  // Stats Counters
   const counts = { common: 0, rare: 0, super: 0 };
   const totals = { common: 0, rare: 0, super: 0 };
-
   COLLECTION_ITEMS.forEach(item => {
-    // Count totals
     if (item.rarity === 1) totals.common++;
     else if (item.rarity === 2) totals.rare++;
     else if (item.rarity === 3) totals.super++;
-
     const isOwned = userStats.inventory.includes(item.id);
     if (isOwned) {
       if (item.rarity === 1) counts.common++;
       else if (item.rarity === 2) counts.rare++;
       else if (item.rarity === 3) counts.super++;
     }
-
     const el = document.createElement('div');
-    // Base Classes
     let rarityClass = "rarity-common";
     if (item.rarity === 2) rarityClass = "rarity-rare";
     if (item.rarity === 3) rarityClass = "rarity-super";
-
     el.className = `aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm transition-transform active:scale-95 cursor-pointer relative overflow-hidden ${isOwned ? rarityClass : 'item-locked border-slate-200'}`;
-    
     if (isOwned) {
       el.innerHTML = `
         <div class="text-4xl mb-2 drop-shadow-sm">${item.icon}</div>
@@ -319,24 +307,15 @@ function showCollectionScreen() {
         <div class="text-3xl mb-1 opacity-20">🔒</div>
         <div class="text-[10px] text-slate-300 font-bold">No.${item.id}</div>
       `;
-      el.onclick = () => { /* Play lock sound */ };
     }
     grid.appendChild(el);
   });
-
-  // Update Header Stats
   document.getElementById('stat-common').textContent = `${counts.common}/${totals.common}`;
   document.getElementById('stat-rare').textContent = `${counts.rare}/${totals.rare}`;
   document.getElementById('stat-super').textContent = `${counts.super}/${totals.super}`;
-
   screen.classList.remove('hidden');
 }
-
-function hideCollectionScreen() {
-  document.getElementById('collection-screen').classList.add('hidden');
-}
-
-// Item Detail Modal
+function hideCollectionScreen() { document.getElementById('collection-screen').classList.add('hidden'); }
 function showItemDetail(item) {
   const modal = document.getElementById('item-detail-modal');
   const card = document.getElementById('item-detail-card');
@@ -345,47 +324,18 @@ function showItemDetail(item) {
   const name = document.getElementById('detail-name');
   const desc = document.getElementById('detail-desc');
   const idDisplay = document.getElementById('detail-id');
-
-  icon.textContent = item.icon;
-  name.textContent = item.name;
-  desc.textContent = item.desc;
+  icon.textContent = item.icon; name.textContent = item.name; desc.textContent = item.desc;
   idDisplay.textContent = item.id.toString().padStart(2, '0');
-
-  // Reset Card Style
   card.className = "w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl transform transition-transform duration-300 scale-100 border-4";
   badge.className = "mb-4 text-xs font-black tracking-widest px-2 py-0.5 rounded border";
-
-  if (item.rarity === 1) {
-    card.classList.add('border-slate-200');
-    badge.textContent = "COMMON";
-    badge.classList.add('bg-slate-100', 'text-slate-500', 'border-slate-200');
-  } else if (item.rarity === 2) {
-    card.classList.add('border-blue-200');
-    badge.textContent = "RARE";
-    badge.classList.add('bg-blue-50', 'text-blue-500', 'border-blue-200');
-  } else {
-    card.classList.add('border-yellow-300');
-    badge.textContent = "SUPER RARE";
-    badge.classList.add('bg-yellow-50', 'text-yellow-600', 'border-yellow-200', 'shadow-sm');
-  }
-
-  modal.classList.remove('hidden');
-  // Trigger fade in
-  requestAnimationFrame(() => {
-    modal.classList.remove('opacity-0');
-  });
+  if (item.rarity === 1) { card.classList.add('border-slate-200'); badge.textContent = "COMMON"; badge.classList.add('bg-slate-100', 'text-slate-500', 'border-slate-200'); } 
+  else if (item.rarity === 2) { card.classList.add('border-blue-200'); badge.textContent = "RARE"; badge.classList.add('bg-blue-50', 'text-blue-500', 'border-blue-200'); } 
+  else { card.classList.add('border-yellow-300'); badge.textContent = "SUPER RARE"; badge.classList.add('bg-yellow-50', 'text-yellow-600', 'border-yellow-200', 'shadow-sm'); }
+  modal.classList.remove('hidden'); requestAnimationFrame(() => modal.classList.remove('opacity-0'));
 }
+function hideItemDetail() { const modal = document.getElementById('item-detail-modal'); modal.classList.add('opacity-0'); setTimeout(() => { modal.classList.add('hidden'); }, 300); }
 
-function hideItemDetail() {
-  const modal = document.getElementById('item-detail-modal');
-  modal.classList.add('opacity-0');
-  setTimeout(() => {
-    modal.classList.add('hidden');
-  }, 300);
-}
-
-
-// --- Question Rendering & Input (Standard) ---
+// --- Question Rendering & Input ---
 function loadQuestion() {
   const q = state.currentSessionQueue[state.currentIndex];
   document.getElementById('progress-text').textContent = `${state.currentIndex + 1} / ${state.currentSessionQueue.length}`;
@@ -497,12 +447,13 @@ function setupKeypad() {
   keys.forEach(k => {
     const btn = document.createElement('button');
     btn.textContent = k;
+    btn.type = 'button';
     btn.className = "bg-white text-slate-700 font-semibold text-2xl py-3 active:bg-slate-200 transition-colors touch-manipulation";
     btn.onclick = () => { 
-      // If we just finished a calculation (equals pressed), start fresh
-      if(state.calc.justCalculated) {
+      // If we are in reset mode (after operator or equals), clear display first
+      if(state.calc.resetDisplay) {
         updateKeypadDisplay(k);
-        state.calc.justCalculated = false;
+        state.calc.resetDisplay = false;
         return;
       }
       let val = state.tempAmount; 
@@ -519,10 +470,10 @@ function openKeypad(id, side) {
   const line = list.find(l => l.id === id);
   if (line) {
     state.tempAmount = line.amount === 0 ? "0" : line.amount.toString();
-    // Reset Calculator State
+    // Reset Calculator State on new open
     state.calc.operand = null;
     state.calc.operator = null;
-    state.calc.justCalculated = false;
+    state.calc.resetDisplay = false;
     updateKeypadDisplay(state.tempAmount);
     
     const backdrop = document.getElementById('keypad-backdrop');
@@ -560,44 +511,53 @@ function confirmAmount() {
   closeKeypad();
 }
 
-// Calculator Logic
+// Calculator Logic (Improved)
 function toggleCalculator() {
   const area = document.getElementById('calc-area');
   area.classList.toggle('hidden');
 }
 
 function handleCalcOperator(op) {
-  // Store current value and operator
-  state.calc.operand = parseInt(state.tempAmount);
+  const current = parseInt(state.tempAmount);
+  
+  // If we already have an operand and an operator, and we haven't just reset (meaning user typed something), calculate chain
+  if (state.calc.operand !== null && state.calc.operator !== null && !state.calc.resetDisplay) {
+    calculateIntermediate();
+  } else {
+    // Just store current as operand
+    state.calc.operand = current;
+  }
+  
   state.calc.operator = op;
-  // Flash effect on display or clear it?
-  // Let's clear visual but keep state
-  updateKeypadDisplay("0");
+  state.calc.resetDisplay = true; // Next digit input will clear display
+}
+
+function calculateIntermediate() {
+  const current = parseInt(state.tempAmount);
+  let result = 0;
+  const prev = state.calc.operand;
+  
+  switch(state.calc.operator) {
+    case '+': result = prev + current; break;
+    case '-': result = prev - current; break;
+    case '*': result = prev * current; break;
+    case '/': 
+      if(current === 0) result = 0; 
+      else result = Math.floor(prev / current); 
+      break;
+  }
+  
+  state.calc.operand = result;
+  updateKeypadDisplay(result.toString());
 }
 
 function handleCalcEqual() {
   if (state.calc.operand === null || state.calc.operator === null) return;
-  
-  const current = parseInt(state.tempAmount);
-  let result = 0;
-  
-  switch(state.calc.operator) {
-    case '+': result = state.calc.operand + current; break;
-    case '-': result = state.calc.operand - current; break;
-    case '*': result = state.calc.operand * current; break;
-    case '/': 
-      if(current === 0) result = 0; 
-      else result = Math.floor(state.calc.operand / current); // Floor division for bookkeeping safety
-      break;
-  }
-  
-  // Update Display
-  updateKeypadDisplay(result.toString());
-  
-  // Reset Op but mark as calculated
-  state.calc.operand = null;
+  calculateIntermediate();
+  // Reset operator after equals
   state.calc.operator = null;
-  state.calc.justCalculated = true;
+  state.calc.operand = null;
+  state.calc.resetDisplay = true; // Result is shown, next typing starts new
 }
 
 // Check Answer
@@ -615,35 +575,19 @@ function checkAnswer() {
   const mapper = l => ({ n: l.accountName, a: l.amount });
   const d1 = userDebit.map(mapper).sort(sorter);
   const c1 = userCredit.map(mapper).sort(sorter);
-  const d2 = q.correctEntries.debit.map(mapper).sort(sorter);
-  const c2 = q.correctEntries.credit.map(mapper).sort(sorter);
-  
-  // Check for aliases (e.g. 売掛金 vs クレジット売掛金)
   const normalize = (entries, aliases) => {
       if(!aliases) return entries;
       return entries.map(e => {
           let name = e.n;
-          // Check debit aliases
-          if (aliases.debit) {
-             aliases.debit.forEach(a => {
-                 const key = Object.keys(a)[0];
-                 if(a[key].includes(name)) name = key;
-             });
-          }
-          // Check credit aliases
-          if (aliases.credit) {
-             aliases.credit.forEach(a => {
-                 const key = Object.keys(a)[0];
-                 if(a[key].includes(name)) name = key;
-             });
-          }
+          if (aliases.debit) { aliases.debit.forEach(a => { const key = Object.keys(a)[0]; if(a[key].includes(name)) name = key; }); }
+          if (aliases.credit) { aliases.credit.forEach(a => { const key = Object.keys(a)[0]; if(a[key].includes(name)) name = key; }); }
           return { n: name, a: e.a };
       }).sort(sorter);
   };
-
   const d1Norm = normalize(d1, q.aliases);
   const c1Norm = normalize(c1, q.aliases);
-  // d2 is correct answer, already normalized structure
+  const d2 = q.correctEntries.debit.map(mapper).sort(sorter);
+  const c2 = q.correctEntries.credit.map(mapper).sort(sorter);
   
   const isCorrect = JSON.stringify(d1Norm) === JSON.stringify(d2) && JSON.stringify(c1Norm) === JSON.stringify(c2);
   
@@ -681,48 +625,31 @@ function nextQuestion() {
   if (state.currentIndex + 1 < state.currentSessionQueue.length) { state.currentIndex++; loadQuestion(); } else { finishSession(); }
 }
 
-// --- Game End & New Gacha Logic ---
 function finishSession() {
   if (state.currentGenreId && state.currentMode !== 'comprehensive') {
     userStats.categoryScores[state.currentGenreId] = { correct: state.sessionStats.correct, total: state.sessionStats.total };
     saveStats();
   }
-  
-  // Show Opening Screen
   const openScreen = document.getElementById('gacha-opening-screen');
   const scoreDisplay = document.getElementById('gacha-score-display');
   const box = document.getElementById('gacha-box');
-  
-  // Reset Box Animation State
   box.classList.remove('animate-shake-hard');
-  
   scoreDisplay.textContent = `${state.sessionStats.correct} / ${state.sessionStats.total}`;
   openScreen.classList.remove('hidden');
 }
 
 function playGachaOpenAnimation() {
   const box = document.getElementById('gacha-box');
-  const container = document.getElementById('gacha-box-container');
-  
-  // 1. Shake it hard
   box.classList.remove('animate-bounce-gentle');
   box.classList.add('animate-shake-hard');
-  
-  // 2. Wait a bit then flash and open
   setTimeout(() => {
-    // Determine the result
     const scorePct = state.sessionStats.total > 0 ? (state.sessionStats.correct / state.sessionStats.total) : 0;
-    
-    // Hide opening screen immediately or fade it
     document.getElementById('gacha-opening-screen').classList.add('hidden');
-    
-    // Show Result
     drawGachaItem(scorePct);
   }, 800);
 }
 
 function drawGachaItem(scorePercent) {
-  // Probabilities
   let probs = { common: 90, rare: 10, super: 0 };
   if (scorePercent === 1.0) probs = { common: 20, rare: 50, super: 30 };
   else if (scorePercent >= 0.8) probs = { common: 40, rare: 50, super: 10 };
@@ -730,63 +657,44 @@ function drawGachaItem(scorePercent) {
   else if (scorePercent > 0) probs = { common: 90, rare: 10, super: 0 };
   else probs = { common: 100, rare: 0, super: 0 };
 
-  // Helper to pick rarity
   const pickRarity = () => {
       const roll = Math.random() * 100;
       if (roll < probs.super) return 3;
       if (roll < probs.super + probs.rare) return 2;
       return 1;
   };
-
-  // Helper to get random item of rarity
   const getRandomItemOfRarity = (rarity) => {
       const pool = COLLECTION_ITEMS.filter(i => i.rarity === rarity);
       return pool[Math.floor(Math.random() * pool.length)];
   };
 
-  // --- Logic for 0% Score ---
-  // Must return a DUPLICATE low rarity (common) if available.
   if (scorePercent === 0) {
       const ownedCommons = userStats.inventory.filter(id => {
           const item = COLLECTION_ITEMS.find(i => i.id === id);
           return item && item.rarity === 1;
       });
-      
       let selectedItem;
       if (ownedCommons.length > 0) {
-          // Force Duplicate Common
           const id = ownedCommons[Math.floor(Math.random() * ownedCommons.length)];
           selectedItem = COLLECTION_ITEMS.find(i => i.id === id);
       } else {
-          // No commons owned? Just give random common.
           selectedItem = getRandomItemOfRarity(1);
       }
-      presentGachaResult(selectedItem, false); // isNew effectively false for logic, but UI might show NEW if user really had 0 items. 
-      // Actually if user had 0 items, isNew checks will verify.
+      presentGachaResult(selectedItem, false);
       return;
   }
 
-  // --- Normal Draw ---
   let rarity = pickRarity();
   let item = getRandomItemOfRarity(rarity);
-  
-  // Reroll Once if Duplicate (Rare+)
   if (rarity >= 2 && userStats.inventory.includes(item.id)) {
-      console.log("Duplicate Rare+ drawn. Rerolling once...");
       item = getRandomItemOfRarity(rarity);
   }
-
   const isNew = !userStats.inventory.includes(item.id);
-  if (isNew) {
-      userStats.inventory.push(item.id);
-      saveStats();
-  }
-  
+  if (isNew) { userStats.inventory.push(item.id); saveStats(); }
   presentGachaResult(item, isNew);
 }
 
 function presentGachaResult(selectedItem, isNew) {
-  // Populate Modal
   const modal = document.getElementById('gacha-result-modal');
   const card = document.getElementById('gacha-card');
   const icon = document.getElementById('gacha-card-icon');
@@ -799,220 +707,25 @@ function presentGachaResult(selectedItem, isNew) {
   icon.textContent = selectedItem.icon;
   name.textContent = selectedItem.name;
   desc.textContent = selectedItem.desc;
-  
-  // Double check isNew against inventory just to be safe if passed incorrectly (e.g. 0% case)
-  const actuallyNew = !userStats.inventory.includes(selectedItem.id) || (isNew && userStats.inventory.includes(selectedItem.id)); 
-  // Wait, if 0% logic picked a duplicate, actuallyNew is false.
-  // If 0% logic picked a random common and user had none, actuallyNew is true.
-  
-  if (isNew) badge.classList.remove('hidden');
-  else badge.classList.add('hidden');
+  if (isNew) badge.classList.remove('hidden'); else badge.classList.add('hidden');
 
-  // Rarity Styling
-  // Reset classes first
   card.className = "w-48 h-64 rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative overflow-hidden transition-transform duration-300 group";
-  
   if (selectedItem.rarity === 1) {
     card.classList.add('rarity-common');
-    rarityText.textContent = "COMMON";
-    rarityText.className = "text-2xl font-black text-slate-400 mb-2 drop-shadow-sm tracking-widest";
-    rarityBadge.textContent = "COMMON";
-    rarityBadge.className = "text-[10px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 backdrop-blur-sm border border-slate-200";
+    rarityText.textContent = "COMMON"; rarityText.className = "text-2xl font-black text-slate-400 mb-2 drop-shadow-sm tracking-widest";
+    rarityBadge.textContent = "COMMON"; rarityBadge.className = "text-[10px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 backdrop-blur-sm border border-slate-200";
   } else if (selectedItem.rarity === 2) {
     card.classList.add('rarity-rare');
-    rarityText.textContent = "RARE";
-    rarityText.className = "text-2xl font-black text-blue-500 mb-2 drop-shadow-sm tracking-widest";
-    rarityBadge.textContent = "RARE";
-    rarityBadge.className = "text-[10px] font-black px-2 py-0.5 rounded bg-blue-50 text-blue-600 backdrop-blur-sm border border-blue-200";
+    rarityText.textContent = "RARE"; rarityText.className = "text-2xl font-black text-blue-500 mb-2 drop-shadow-sm tracking-widest";
+    rarityBadge.textContent = "RARE"; rarityBadge.className = "text-[10px] font-black px-2 py-0.5 rounded bg-blue-50 text-blue-600 backdrop-blur-sm border border-blue-200";
   } else {
     card.classList.add('rarity-super');
-    rarityText.textContent = "SUPER RARE";
-    rarityText.className = "text-2xl font-black text-yellow-500 mb-2 drop-shadow-sm tracking-widest";
-    rarityBadge.textContent = "S.RARE";
-    rarityBadge.className = "text-[10px] font-black px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 backdrop-blur-sm border border-yellow-200 shadow-sm";
+    rarityText.textContent = "SUPER RARE"; rarityText.className = "text-2xl font-black text-yellow-500 mb-2 drop-shadow-sm tracking-widest";
+    rarityBadge.textContent = "S.RARE"; rarityBadge.className = "text-[10px] font-black px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 backdrop-blur-sm border border-yellow-200 shadow-sm";
   }
-
   modal.classList.remove('hidden');
   requestAnimationFrame(() => modal.classList.remove('opacity-0'));
-  
   if(isNew) renderHomeStats();
 }
 
-// Explanation & Persistence
-function startExplanationMode() {
-  const q = state.currentSessionQueue[state.currentIndex];
-  explanationState.question = q;
-  explanationState.active = true;
-  document.getElementById('result-modal').classList.add('hidden');
-  document.getElementById('explanation-screen').classList.remove('hidden');
-  document.getElementById('expl-q-id').textContent = state.currentIndex + 1;
-  if (q.explanationSteps && q.explanationSteps.length > 0) {
-    explanationState.steps = [...q.explanationSteps];
-  } else {
-    const debitEntries = q.correctEntries.debit.map(e => ({ side: 'debit', account: e.accountName, amount: e.amount }));
-    const creditEntries = q.correctEntries.credit.map(e => ({ side: 'credit', account: e.accountName, amount: e.amount }));
-    explanationState.steps = [];
-    if(debitEntries.length > 0) explanationState.steps.push({ highlight: "", entries: debitEntries, comment: "借方の仕訳を確認します。" });
-    if(creditEntries.length > 0) explanationState.steps.push({ highlight: "", entries: creditEntries, comment: "貸方の仕訳を確認します。" });
-    explanationState.steps.push({ highlight: "", entries: [], comment: q.explanation || "全体の流れを確認しましょう。" });
-  }
-  explanationState.currentStepIndex = -1;
-  explanationState.isPlaying = false;
-  updateExplControls();
-  renderExplStep(-1);
-}
-function closeExplanationMode() {
-  if (explanationState.intervalId) clearInterval(explanationState.intervalId);
-  explanationState.active = false;
-  document.getElementById('explanation-screen').classList.add('hidden');
-  document.getElementById('result-modal').classList.remove('hidden');
-}
-function toggleExplPlay() {
-  if (explanationState.isPlaying) {
-    explanationState.isPlaying = false;
-    if (explanationState.intervalId) clearInterval(explanationState.intervalId);
-    updateExplControls();
-  } else {
-    if (explanationState.currentStepIndex >= explanationState.steps.length - 1) {
-      explanationState.currentStepIndex = -1;
-      renderExplStep(-1);
-    }
-    explanationState.isPlaying = true;
-    updateExplControls();
-    explanationState.intervalId = setInterval(() => {
-       if (explanationState.currentStepIndex < explanationState.steps.length - 1) {
-         changeExplStep(1);
-       } else {
-         explanationState.isPlaying = false;
-         clearInterval(explanationState.intervalId);
-         updateExplControls();
-       }
-    }, 2500); 
-  }
-}
-function changeExplStep(delta) {
-  const newIndex = explanationState.currentStepIndex + delta;
-  if (newIndex >= -1 && newIndex < explanationState.steps.length) {
-    explanationState.currentStepIndex = newIndex;
-    renderExplStep(newIndex);
-  }
-}
-function renderExplStep(index) {
-  const q = explanationState.question;
-  const steps = explanationState.steps;
-  const textContainer = document.getElementById('expl-question-text');
-  if (index === -1) textContainer.innerHTML = q.text;
-  else {
-    const step = steps[index];
-    if (step.highlight && q.text.includes(step.highlight)) {
-      textContainer.innerHTML = q.text.replace(step.highlight, `<span class="bg-yellow-300 rounded px-1 box-decoration-clone transition-all duration-300">${step.highlight}</span>`);
-    } else textContainer.innerHTML = q.text;
-  }
-  const debitContainer = document.getElementById('expl-debit-area');
-  const creditContainer = document.getElementById('expl-credit-area');
-  debitContainer.innerHTML = '';
-  creditContainer.innerHTML = '';
-  const currentDebitState = [];
-  const currentCreditState = [];
-  const updateState = (stateArray, entry) => {
-    const existingIdx = stateArray.findIndex(e => e.account === entry.account);
-    if (existingIdx >= 0) stateArray[existingIdx] = { ...stateArray[existingIdx], ...entry };
-    else stateArray.push({ ...entry });
-  };
-  if (index > -1) {
-    for (let i = 0; i <= index; i++) {
-      const stepEntries = steps[i].entries || [];
-      stepEntries.forEach(entry => {
-        if (entry.side === 'debit') updateState(currentDebitState, entry);
-        if (entry.side === 'credit') updateState(currentCreditState, entry);
-      });
-    }
-  }
-  const renderEntry = (entry) => {
-    const el = document.createElement('div');
-    el.className = "flex justify-between items-center bg-white border border-slate-200 p-2 rounded shadow-sm animate-fade-in transition-all duration-300";
-    let isNew = false;
-    if (index > -1) {
-      const currentStepEntries = steps[index].entries || [];
-      isNew = currentStepEntries.some(e => e.account === entry.account && e.side === entry.side);
-    }
-    if (isNew) el.classList.add('border-blue-400', 'bg-blue-50');
-    const amountDisplay = (typeof entry.amount === 'number') ? entry.amount.toLocaleString() : (entry.amount || '');
-    el.innerHTML = `<span class="font-bold text-slate-700 text-sm">${entry.account}</span><span class="font-mono ${entry.amount === '???' ? 'text-slate-300 font-bold' : 'text-slate-600'}">${amountDisplay}</span>`;
-    return el;
-  };
-  currentDebitState.forEach(e => debitContainer.appendChild(renderEntry(e)));
-  currentCreditState.forEach(e => creditContainer.appendChild(renderEntry(e)));
-  const commentContainer = document.getElementById('expl-commentary');
-  if (index === -1) commentContainer.textContent = "それでは、仕訳のプロセスを順番に確認しましょう。再生ボタンを押すか、矢印で進めてください。";
-  else commentContainer.textContent = steps[index].comment || "";
-  const dotsContainer = document.getElementById('expl-progress-dots');
-  dotsContainer.innerHTML = '';
-  const startDot = document.createElement('div');
-  startDot.className = `w-2 h-2 rounded-full transition-colors ${index === -1 ? 'bg-blue-600' : 'bg-slate-300'}`;
-  dotsContainer.appendChild(startDot);
-  steps.forEach((_, i) => {
-    const dot = document.createElement('div');
-    dot.className = `w-2 h-2 rounded-full transition-colors ${i === index ? 'bg-blue-600' : (i < index ? 'bg-blue-300' : 'bg-slate-200')}`;
-    dotsContainer.appendChild(dot);
-  });
-  updateExplControls();
-}
-function updateExplControls() {
-  const prevBtn = document.getElementById('expl-prev-btn');
-  const nextBtn = document.getElementById('expl-next-btn');
-  const playText = document.getElementById('expl-play-text');
-  const playIcon = document.getElementById('expl-play-icon');
-  prevBtn.disabled = explanationState.currentStepIndex <= -1;
-  nextBtn.disabled = explanationState.currentStepIndex >= explanationState.steps.length - 1;
-  if (explanationState.isPlaying) {
-    playText.textContent = "一時停止";
-    playIcon.textContent = "⏸";
-  } else {
-    if (explanationState.currentStepIndex >= explanationState.steps.length - 1) {
-       playText.textContent = "もう一度";
-       playIcon.textContent = "↻";
-    } else {
-       playText.textContent = "解説を再生";
-       playIcon.textContent = "▶";
-    }
-  }
-}
-
-// Persistence
-const STORAGE_KEY = 'zensho_bookkeeping_v9';
-function loadStats() {
-  const s = localStorage.getItem(STORAGE_KEY);
-  if (s) {
-    try { 
-      const data = JSON.parse(s); 
-      userStats = { ...userStats, ...data };
-      if(!userStats.categoryScores) userStats.categoryScores = {};
-      if(!userStats.inventory) userStats.inventory = [];
-    } catch(e) {}
-  }
-}
-function saveStats() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(userStats));
-}
-function renderHomeStats() {
-  document.getElementById('home-stat-correct').textContent = userStats.correct;
-  document.getElementById('collection-count').textContent = userStats.inventory.length;
-
-  // Completion Check
-  if (userStats.inventory.length >= COLLECTION_ITEMS.length) {
-    document.body.classList.add('bg-complete');
-    document.getElementById('app-title').textContent = "全商簿記3級 マスター";
-    document.getElementById('app-subtitle').textContent = "すべてのアイテムをコンプリートしました！";
-  } else {
-    document.body.classList.remove('bg-complete');
-    document.getElementById('app-title').innerHTML = "全商簿記3級<br>仕訳演習";
-    document.getElementById('app-subtitle').textContent = "基礎から合格レベルまで完全網羅";
-  }
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
-}
+if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initApp); } else { initApp(); }
