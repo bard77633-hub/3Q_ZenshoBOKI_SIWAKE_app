@@ -98,21 +98,21 @@ const Keypad = ({ isOpen, onClose, onConfirm, initialValue }) => {
         <div className="bg-slate-50 p-3 border-b flex justify-between items-center">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-slate-700 text-sm">金額を入力</h3>
-            <button onClick={() => setCalcMode(!calcMode)} className="text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold border border-orange-200 hover:bg-orange-200">
+            <button type="button" onClick={() => setCalcMode(!calcMode)} className="text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold border border-orange-200 hover:bg-orange-200">
               電卓ツール 🧮
             </button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 font-bold p-1 px-3 bg-slate-200 rounded-full text-xs">閉じる</button>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 font-bold p-1 px-3 bg-slate-200 rounded-full text-xs">閉じる</button>
         </div>
 
         {calcMode && (
           <div className="bg-orange-50 border-b border-orange-100 grid grid-cols-4 gap-1 p-2">
             {['+', '-', '*', '/'].map(op => (
-              <button key={op} onClick={() => handleOp(op)} className="bg-orange-100 text-orange-700 font-bold py-2 rounded hover:bg-orange-200">
+              <button key={op} type="button" onClick={() => handleOp(op)} className="bg-orange-100 text-orange-700 font-bold py-2 rounded hover:bg-orange-200 touch-manipulation">
                 {op === '*' ? '×' : op === '/' ? '÷' : op === '+' ? '＋' : '−'}
               </button>
             ))}
-            <button onClick={handleEqual} className="col-span-4 bg-orange-200 text-orange-800 font-bold py-2 rounded mt-1 active:bg-orange-300">＝</button>
+            <button type="button" onClick={handleEqual} className="col-span-4 bg-orange-200 text-orange-800 font-bold py-2 rounded mt-1 active:bg-orange-300 touch-manipulation">＝</button>
           </div>
         )}
 
@@ -123,22 +123,171 @@ const Keypad = ({ isOpen, onClose, onConfirm, initialValue }) => {
 
         <div className="grid grid-cols-3 gap-px bg-slate-200 border-b border-slate-200">
           {[7,8,9,4,5,6,1,2,3,0,'00','000'].map(n => (
-            <button key={n} onClick={() => handleDigit(n.toString())} className="bg-white text-slate-700 font-semibold text-2xl py-3 active:bg-slate-200 touch-manipulation">
+            <button key={n} type="button" onClick={() => handleDigit(n.toString())} className="bg-white text-slate-700 font-semibold text-2xl py-3 active:bg-slate-200 touch-manipulation">
               {n}
             </button>
           ))}
         </div>
         <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50">
-           <button onClick={handleClear} className="bg-white text-red-500 font-bold py-3 rounded shadow-sm border border-slate-200 active:bg-slate-100">C</button>
-           <button onClick={handleBackspace} className="bg-white text-orange-500 font-bold py-3 rounded shadow-sm border border-slate-200 active:bg-slate-100">⌫</button>
-           <button onClick={() => onConfirm(parseInt(value))} className="col-span-2 bg-blue-600 text-white font-bold py-3 rounded shadow active:bg-blue-700">決定</button>
+           <button type="button" onClick={handleClear} className="bg-white text-red-500 font-bold py-3 rounded shadow-sm border border-slate-200 active:bg-slate-100 touch-manipulation">C</button>
+           <button type="button" onClick={handleBackspace} className="bg-white text-orange-500 font-bold py-3 rounded shadow-sm border border-slate-200 active:bg-slate-100 touch-manipulation">⌫</button>
+           <button type="button" onClick={() => onConfirm(parseInt(value))} className="col-span-2 bg-blue-600 text-white font-bold py-3 rounded shadow active:bg-blue-700 touch-manipulation">決定</button>
         </div>
       </div>
     </div>
   );
 };
 
-// 2. Main App Component
+// 2. Item Detail Modal
+const ItemDetailModal = ({ item, onClose }) => {
+  if (!item) return null;
+  
+  let borderColor = "border-slate-300";
+  let badgeColor = "bg-slate-100 text-slate-500 border-slate-200";
+  let rarityLabel = "COMMON";
+  
+  if (item.rarity === 2) {
+    borderColor = "border-blue-400";
+    badgeColor = "bg-blue-50 text-blue-600 border-blue-200";
+    rarityLabel = "RARE";
+  } else if (item.rarity === 3) {
+    borderColor = "border-yellow-400";
+    badgeColor = "bg-yellow-50 text-yellow-600 border-yellow-200";
+    rarityLabel = "SUPER RARE";
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div className={`w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl transform transition-transform duration-300 scale-100 border-4 ${borderColor}`} onClick={e => e.stopPropagation()}>
+        <div className="relative p-6 flex flex-col items-center text-center">
+          <button onClick={onClose} className="absolute top-3 right-3 text-slate-300 hover:text-slate-500 font-bold text-2xl leading-none">&times;</button>
+          
+          <div className={`mb-4 text-xs font-black tracking-widest px-2 py-0.5 rounded border ${badgeColor}`}>{rarityLabel}</div>
+          
+          <div className="w-24 h-24 mb-4 flex items-center justify-center text-7xl drop-shadow-md animate-bounce-gentle">
+            {item.icon}
+          </div>
+          
+          <h3 className="text-xl font-bold text-slate-800 mb-4 border-b-2 border-slate-100 pb-2 w-full">{item.name}</h3>
+          
+          <div className="bg-slate-50 rounded-lg p-4 w-full border border-slate-100 mb-4">
+            <p className="text-sm text-slate-600 leading-relaxed text-left font-medium whitespace-pre-wrap">
+              {item.desc}
+            </p>
+          </div>
+          
+          <div className="text-[10px] text-slate-400">No.{item.id.toString().padStart(2, '0')}</div>
+        </div>
+        <div className="bg-slate-100 p-3 text-center border-t border-slate-200">
+           <p className="text-[10px] text-slate-400">全商簿記実務検定</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 3. Explanation Overlay
+const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
+  const [stepIndex, setStepIndex] = useState(-1);
+  const steps = q.explanationSteps || [];
+  
+  // 安全策として、stepsがない場合はq.explanationを表示するだけのモードにする
+  const currentText = stepIndex === -1 
+    ? "まずは全体の流れを確認しましょう。" 
+    : (steps[stepIndex]?.comment || q.explanation);
+
+  const displayHtml = stepIndex === -1 
+    ? q.text 
+    : (steps[stepIndex]?.highlight 
+        ? q.text.replace(steps[stepIndex].highlight, `<span class="bg-yellow-300 font-bold px-1 rounded">${steps[stepIndex].highlight}</span>`) 
+        : q.text);
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-gray-100 flex flex-col animate-fade-in">
+      <div className="bg-white px-4 py-3 shadow-sm flex justify-between items-center shrink-0">
+        <h2 className="font-bold text-slate-700 flex items-center gap-2">
+          <span className="bg-yellow-400 text-yellow-900 text-xs px-2 py-0.5 rounded font-black">解説モード</span>
+          <span className="text-sm">Q.{currentIndex + 1}</span>
+        </h2>
+        <button 
+          onClick={onClose} 
+          className="text-slate-500 hover:text-slate-700 font-bold px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors text-xs"
+        >
+          閉じる
+        </button>
+      </div>
+
+      <div className="flex-grow p-4 overflow-y-auto space-y-4">
+         <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+           <p 
+             className="text-lg md:text-xl font-medium text-slate-800 leading-relaxed transition-all duration-300" 
+             dangerouslySetInnerHTML={{ __html: displayHtml }}
+           />
+         </div>
+         
+         <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 p-2 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+              仕訳プロセス
+            </div>
+            {/* 簡易的な仕訳表示エリア（ステップに応じて表示を変えるなどの拡張が可能） */}
+            <div className="grid grid-cols-2 divide-x divide-slate-100 text-sm">
+               <div className="p-3">
+                 <div className="text-center text-xs text-blue-500 font-bold mb-2">借方</div>
+                 {q.correctEntries.debit.map((d, i) => (
+                   <div key={i} className={`flex justify-between mb-1 ${stepIndex >= 0 && steps[stepIndex]?.debit === d.accountName ? 'bg-blue-100 font-bold p-1 rounded' : ''}`}>
+                     <span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span>
+                   </div>
+                 ))}
+               </div>
+               <div className="p-3">
+                 <div className="text-center text-xs text-red-500 font-bold mb-2">貸方</div>
+                 {q.correctEntries.credit.map((c, i) => (
+                   <div key={i} className={`flex justify-between mb-1 ${stepIndex >= 0 && steps[stepIndex]?.credit === c.accountName ? 'bg-red-100 font-bold p-1 rounded' : ''}`}>
+                     <span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span>
+                   </div>
+                 ))}
+               </div>
+            </div>
+         </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="bg-white border-t border-slate-200 p-4 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10 pb-8">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <div className="relative bg-yellow-50 p-4 rounded-xl border border-yellow-200 min-h-[5rem] flex items-center shadow-sm">
+            <div className="absolute -top-3 left-4 bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-200">POINT</div>
+            <p className="text-base md:text-lg font-medium text-slate-800 w-full animate-fade-in">
+              {currentText}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <button 
+              type="button"
+              onClick={() => setStepIndex(prev => Math.max(-1, prev - 1))} 
+              disabled={stepIndex <= -1}
+              className="p-4 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 touch-manipulation"
+            >
+              ◀
+            </button>
+            <div className="flex-grow text-center text-xs text-slate-400 font-bold">
+              STEP {stepIndex + 2} / {steps.length + 1}
+            </div>
+            <button 
+              type="button"
+              onClick={() => setStepIndex(prev => Math.min(steps.length - 1, prev + 1))} 
+              disabled={stepIndex >= steps.length - 1}
+              className="p-4 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 touch-manipulation"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 4. Main App Component
 const App = () => {
   const [screen, setScreen] = useState('home'); // home, game, result, collection, explanation, gacha
   const [userStats, setUserStats] = useState({ correct: 0, total: 0, history: [], categoryScores: {}, inventory: [] });
@@ -159,16 +308,29 @@ const App = () => {
   const [gachaItem, setGachaItem] = useState(null);
   const [isNewItem, setIsNewItem] = useState(false);
 
+  // Collection State
+  const [selectedCollectionItem, setSelectedCollectionItem] = useState(null);
+
   // Explanation State
-  const [explState, setExplState] = useState({ active: false, stepIndex: -1, isPlaying: false });
-  const explTimerRef = useRef(null);
+  const [showExplanation, setShowExplanation] = useState(false);
 
   // Initialization
   useEffect(() => {
     // Load Data
     const merged = RAW_QUESTIONS.map(q => {
       const expl = EXPLANATIONS[q.id];
-      return { ...q, explanation: expl ? expl.explanation : "", explanationSteps: q.explanationSteps || (expl ? expl.steps : []) };
+      // Generate some dummy steps if none exist, just for demo
+      const dummySteps = expl ? [
+        { comment: "まずは取引の要素を分解します。", highlight: "" },
+        { comment: "勘定科目を決定します。", highlight: "" },
+        { comment: "金額を計算し、借方・貸方に記入します。", highlight: "" }
+      ] : [];
+
+      return { 
+        ...q, 
+        explanation: expl ? expl.explanation : "解説準備中", 
+        explanationSteps: q.explanationSteps || (expl ? expl.steps : dummySteps) 
+      };
     });
     setQuestions(merged);
 
@@ -260,13 +422,12 @@ const App = () => {
         ...prev, 
         correct: prev.correct + 1, 
         total: prev.total + 1,
-        categoryScores: { ...prev.categoryScores, [q.sub]: (prev.categoryScores[q.sub] || {correct:0, total:0}) } // Update logic below
+        categoryScores: { ...prev.categoryScores, [q.sub]: (prev.categoryScores[q.sub] || {correct:0, total:0}) } 
       }));
     } else {
       setUserStats(prev => ({ ...prev, total: prev.total + 1 }));
     }
     
-    // Update Sub Category Score
     if (q.sub) {
         setUserStats(prev => {
             const currentSub = prev.categoryScores[q.sub] || { correct: 0, total: 0 };
@@ -311,12 +472,10 @@ const App = () => {
     const pool = COLLECTION_ITEMS.filter(i => i.rarity === rarity);
     let item = pool[Math.floor(Math.random() * pool.length)];
     
-    // Reroll logic
     if (rarity >= 2 && userStats.inventory.includes(item.id)) {
        item = pool[Math.floor(Math.random() * pool.length)];
     }
 
-    // 0% Special case
     if (scoreRate === 0) {
        const ownedCommon = COLLECTION_ITEMS.filter(i => i.rarity === 1 && userStats.inventory.includes(i.id));
        if (ownedCommon.length > 0) item = ownedCommon[Math.floor(Math.random() * ownedCommon.length)];
@@ -330,12 +489,6 @@ const App = () => {
     setGachaItem(item);
     setIsNewItem(isNew);
     setScreen('gacha_result');
-  };
-
-  // Explanation Logic
-  const startExplanation = () => {
-    setShowResultModal(false);
-    setExplState({ active: true, stepIndex: -1, isPlaying: false });
   };
 
   // --- Rendering ---
@@ -352,12 +505,12 @@ const App = () => {
             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">総正解数</div>
             <div className="text-2xl font-bold text-blue-600">{userStats.correct}<span className="text-xs text-slate-500 ml-1">問</span></div>
           </div>
-          <button onClick={() => setScreen('collection')} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-colors group">
+          <button type="button" onClick={() => setScreen('collection')} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-colors group">
             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 group-hover:text-orange-500">コレクション</div>
             <div className="text-2xl">{userStats.inventory.length}<span className="text-xs text-slate-500 ml-1">/ {COLLECTION_ITEMS.length}</span></div>
           </button>
         </div>
-        <button onClick={() => startSession('comprehensive')} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex justify-between items-center hover:from-blue-700 transition-all active:scale-[0.98]">
+        <button type="button" onClick={() => startSession('comprehensive')} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex justify-between items-center hover:from-blue-700 transition-all active:scale-[0.98]">
           <div className="text-left">
             <div className="text-lg">🏆 総合演習</div>
             <div className="text-xs text-blue-100 font-normal">全範囲からランダム 10問</div>
@@ -374,14 +527,14 @@ const App = () => {
             <div key={g.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="font-bold text-slate-700">{g.title}</h3>
-                <button onClick={() => startSession('major', g.id)} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">まとめ</button>
+                <button type="button" onClick={() => startSession('major', g.id)} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">まとめ</button>
               </div>
               <div className="divide-y divide-slate-100">
                 {g.subs.map(s => {
                   const score = userStats.categoryScores[s.id];
                   const rate = score ? (score.correct / score.total) : 0;
                   return (
-                    <button key={s.id} onClick={() => startSession('sub', s.id)} className="w-full text-left p-4 hover:bg-slate-50 flex justify-between items-center">
+                    <button type="button" key={s.id} onClick={() => startSession('sub', s.id)} className="w-full text-left p-4 hover:bg-slate-50 flex justify-between items-center">
                       <span className="text-sm text-slate-600">{s.title}</span>
                       <span className={`text-xs px-2 py-1 rounded font-mono ${rate >= 0.8 ? 'bg-green-100 text-green-700' : rate >= 0.4 ? 'bg-yellow-50 text-yellow-600' : 'bg-slate-100 text-slate-400'}`}>
                         {score ? `${score.correct}/${score.total}` : '-'}
@@ -393,7 +546,7 @@ const App = () => {
             </div>
           ))}
         </div>
-        <button onClick={() => { if(confirm('データをリセットしますか？')) { localStorage.removeItem('zensho_bookkeeping_v3'); location.reload(); }}} className="text-xs text-slate-400 underline">リセット</button>
+        <button type="button" onClick={() => { if(confirm('データをリセットしますか？')) { localStorage.removeItem('zensho_bookkeeping_v3'); location.reload(); }}} className="text-xs text-slate-400 underline">リセット</button>
       </div>
     );
   }
@@ -401,34 +554,44 @@ const App = () => {
   if (screen === 'collection') {
     const isOwned = (id) => userStats.inventory.includes(id);
     return (
-      <div className="fixed inset-0 bg-slate-100 flex flex-col z-50">
-        <header className="bg-white shadow-sm px-4 py-3">
-          <button onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button>
-          <h2 className="font-bold text-slate-700">アイテム図鑑</h2>
-        </header>
-        <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 gap-3 max-w-4xl mx-auto w-full">
-          {COLLECTION_ITEMS.map(item => {
-            const owned = isOwned(item.id);
-            return (
-              <div key={item.id} className={`aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm ${owned ? (item.rarity===3 ? 'border-yellow-300 bg-yellow-50' : item.rarity===2 ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white') : 'border-slate-200 bg-slate-100 grayscale opacity-50'}`}>
-                <div className="text-4xl mb-2">{owned ? item.icon : '🔒'}</div>
-                <div className="text-xs font-bold text-slate-700 text-center leading-tight">{owned ? item.name : `No.${item.id}`}</div>
-              </div>
-            );
-          })}
+      <>
+        <div className="fixed inset-0 bg-slate-100 flex flex-col z-50">
+          <header className="bg-white shadow-sm px-4 py-3">
+            <button type="button" onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button>
+            <h2 className="font-bold text-slate-700">アイテム図鑑</h2>
+          </header>
+          <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 gap-3 max-w-4xl mx-auto w-full">
+            {COLLECTION_ITEMS.map(item => {
+              const owned = isOwned(item.id);
+              return (
+                <div 
+                  key={item.id} 
+                  onClick={() => { if(owned) setSelectedCollectionItem(item); }}
+                  className={`aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm transition-transform active:scale-95 cursor-pointer select-none ${owned ? (item.rarity===3 ? 'border-yellow-300 bg-yellow-50' : item.rarity===2 ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white') : 'border-slate-200 bg-slate-100 grayscale opacity-50 cursor-default'}`}
+                >
+                  <div className="text-4xl mb-2">{owned ? item.icon : '🔒'}</div>
+                  <div className="text-xs font-bold text-slate-700 text-center leading-tight truncate w-full px-1">{owned ? item.name : `No.${item.id}`}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+        <ItemDetailModal 
+          item={selectedCollectionItem} 
+          onClose={() => setSelectedCollectionItem(null)} 
+        />
+      </>
     );
   }
 
   // --- Game Screen ---
-  if (screen === 'game' || screen === 'explanation') {
+  if (screen === 'game') {
     const q = currentSession[currentIndex];
     
     return (
       <div className="flex flex-col min-h-screen">
         <header className="bg-white shadow-sm sticky top-0 z-20 px-4 py-3 flex justify-between items-center max-w-4xl mx-auto w-full">
-          <button onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm">← HOME</button>
+          <button type="button" onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm">← HOME</button>
           <div className="text-sm font-medium bg-slate-100 px-3 py-1 rounded-full">{currentIndex + 1} / {currentSession.length}</div>
         </header>
 
@@ -442,9 +605,12 @@ const App = () => {
 
           {/* Choices */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase tracking-wider flex items-center gap-1">
+              <span>👇 タップして選択</span>
+            </p>
             <div className="flex flex-wrap gap-2">
               {q.choices.map(c => (
-                <button key={c} onClick={() => handleChoiceClick(c)} className={`px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all border-2 ${selectedChoice === c ? 'bg-blue-100 border-blue-500 text-blue-800 scale-95' : 'bg-white border-slate-200 text-slate-700 active:scale-95'}`}>
+                <button type="button" key={c} onClick={() => handleChoiceClick(c)} className={`px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all border-2 touch-manipulation ${selectedChoice === c ? 'bg-blue-100 border-blue-500 text-blue-800 scale-95' : 'bg-white border-slate-200 text-slate-700 active:scale-95'}`}>
                   {c}
                 </button>
               ))}
@@ -463,17 +629,17 @@ const App = () => {
                 <div key={side} className="p-2 space-y-2">
                   {(side === 'debit' ? debitLines : creditLines).map(line => (
                     <div key={line.id} className={`flex flex-col gap-1 p-2 rounded border ${side === 'debit' ? 'bg-blue-50/30 border-blue-100' : 'bg-red-50/30 border-red-100'}`}>
-                      <div onClick={() => handleZoneClick(side, line.id)} className={`h-10 border-2 border-dashed rounded flex items-center justify-center cursor-pointer ${line.accountName ? 'bg-white border-transparent' : selectedChoice ? 'border-blue-300 animate-pulse' : 'border-slate-300'}`}>
-                        <span className="text-sm font-bold text-slate-800">{line.accountName || <span className="text-slate-300 text-xs">科目を選択</span>}</span>
-                        {line.accountName && <button onClick={(e) => { e.stopPropagation(); handleLineUpdate(side, line.id, 'accountName', null); }} className="ml-2 text-slate-400">×</button>}
+                      <div onClick={() => handleZoneClick(side, line.id)} className={`h-10 border-2 border-dashed rounded flex items-center justify-center cursor-pointer transition-colors ${line.accountName ? 'bg-white border-transparent' : selectedChoice ? 'border-blue-300 animate-pulse bg-white/50' : 'border-slate-300'}`}>
+                        <span className="text-sm font-bold text-slate-800">{line.accountName || <span className="text-slate-300 text-xs pointer-events-none">科目を選択</span>}</span>
+                        {line.accountName && <button type="button" onClick={(e) => { e.stopPropagation(); handleLineUpdate(side, line.id, 'accountName', null); }} className="ml-2 text-slate-400 p-2">×</button>}
                       </div>
-                      <div onClick={() => setKeypadConfig({ isOpen: true, lineId: line.id, side, initialValue: line.amount })} className="h-10 bg-white border border-slate-300 rounded flex items-center justify-end px-3 cursor-pointer">
+                      <div onClick={() => setKeypadConfig({ isOpen: true, lineId: line.id, side, initialValue: line.amount })} className="h-10 bg-white border border-slate-300 rounded flex items-center justify-end px-3 cursor-pointer hover:border-blue-400 active:bg-slate-50">
                         <span className="font-mono text-lg font-bold text-slate-800">{line.amount > 0 ? line.amount.toLocaleString() : <span className="text-slate-300 font-normal">金額</span>}</span>
                       </div>
-                      {(side==='debit'?debitLines:creditLines).length > 1 && <button onClick={() => removeLine(side, line.id)} className="text-xs text-red-400 text-right">削除</button>}
+                      {(side==='debit'?debitLines:creditLines).length > 1 && <button type="button" onClick={() => removeLine(side, line.id)} className="text-xs text-red-400 text-right p-1">削除</button>}
                     </div>
                   ))}
-                  <button onClick={() => addLine(side)} className={`w-full py-2 text-xs font-bold rounded border border-dashed ${side==='debit'?'text-blue-400 border-blue-200 hover:bg-blue-50':'text-red-400 border-red-200 hover:bg-red-50'}`}>+ 行追加</button>
+                  <button type="button" onClick={() => addLine(side)} className={`w-full py-2 text-xs font-bold rounded border border-dashed transition-colors ${side==='debit'?'text-blue-400 border-blue-200 hover:bg-blue-50':'text-red-400 border-red-200 hover:bg-red-50'}`}>+ 行追加</button>
                 </div>
               ))}
             </div>
@@ -482,7 +648,7 @@ const App = () => {
 
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur border-t border-slate-200 z-30">
           <div className="max-w-4xl mx-auto">
-            <button onClick={checkAnswer} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md text-lg active:scale-[0.98]">解答する</button>
+            <button type="button" onClick={checkAnswer} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md text-lg active:scale-[0.98] transition-transform">解答する</button>
           </div>
         </div>
 
@@ -514,40 +680,24 @@ const App = () => {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase mb-1">解説</h4>
-                  <p className="text-sm text-slate-700 bg-yellow-50 p-3 rounded border border-yellow-100 leading-relaxed">{lastResult.q.explanation}</p>
+                  <p className="text-sm text-slate-700 bg-yellow-50 p-3 rounded border border-yellow-100 leading-relaxed whitespace-pre-wrap">{lastResult.q.explanation}</p>
                 </div>
               </div>
               <div className="p-4 bg-white border-t space-y-3">
-                <button onClick={startExplanation} className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold py-3 rounded-xl shadow-md">🎬 解説モード</button>
-                <button onClick={nextQuestion} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md">次の問題へ</button>
+                <button type="button" onClick={() => { setShowResultModal(false); setShowExplanation(true); }} className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98]">🎬 解説モード</button>
+                <button type="button" onClick={nextQuestion} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98]">次の問題へ</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Explanation Overlay */}
-        {explState.active && (
-          <div className="fixed inset-0 z-[60] bg-gray-100 flex flex-col animate-fade-in">
-            <div className="bg-white px-4 py-3 shadow-sm flex justify-between items-center">
-              <h2 className="font-bold text-slate-700"><span className="bg-yellow-400 text-yellow-900 text-xs px-2 py-0.5 rounded mr-2">解説</span>Q.{currentIndex+1}</h2>
-              <button onClick={() => { setShowResultModal(true); setExplState({ active: false }); }} className="text-sm font-bold text-slate-500">閉じる</button>
-            </div>
-            <div className="flex-grow p-4 overflow-y-auto">
-               <p className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-lg font-medium mb-4" 
-                  dangerouslySetInnerHTML={{ __html: explState.stepIndex === -1 ? q.text : (q.explanationSteps[explState.stepIndex]?.highlight ? q.text.replace(q.explanationSteps[explState.stepIndex].highlight, `<span class="bg-yellow-300">${q.explanationSteps[explState.stepIndex].highlight}</span>`) : q.text) }}>
-               </p>
-               {/* Visualizer would go here - simplified for this implementation */}
-               <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 min-h-[5rem] flex items-center">
-                 <p className="text-lg font-medium text-slate-800">
-                   {explState.stepIndex === -1 ? "まずは全体の流れを確認しましょう。" : (q.explanationSteps[explState.stepIndex]?.comment || q.explanation)}
-                 </p>
-               </div>
-            </div>
-            <div className="bg-white p-4 border-t flex gap-4">
-               <button onClick={() => setExplState(p => ({...p, stepIndex: Math.max(-1, p.stepIndex - 1)}))} className="p-4 bg-slate-100 rounded-full">◀</button>
-               <button onClick={() => setExplState(p => ({...p, stepIndex: Math.min((q.explanationSteps?.length||0)-1, p.stepIndex + 1)}))} className="p-4 bg-slate-100 rounded-full">▶</button>
-            </div>
-          </div>
+        {/* Explanation Overlay Component */}
+        {showExplanation && (
+          <ExplanationOverlay 
+            q={currentSession[currentIndex]} 
+            currentIndex={currentIndex}
+            onClose={() => { setShowExplanation(false); setShowResultModal(true); }}
+          />
         )}
       </div>
     );
@@ -557,10 +707,10 @@ const App = () => {
   if (screen === 'gacha_open') {
     return (
       <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-50 cursor-pointer" onClick={doGacha}>
-        <div className="text-white text-2xl font-bold mb-8">お疲れ様でした！</div>
-        <div className="text-white text-xl mb-12">正解数: <span className="font-mono text-4xl text-yellow-400 font-bold ml-2">{sessionStats.correct} / {currentSession.length}</span></div>
-        <div className="text-9xl animate-bounce">🎁</div>
-        <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6">タップして開封</div>
+        <div className="text-white text-2xl font-bold mb-8 animate-fade-in-up">お疲れ様でした！</div>
+        <div className="text-white text-xl mb-12 animate-fade-in-up" style={{animationDelay: '0.1s'}}>正解数: <span className="font-mono text-4xl text-yellow-400 font-bold ml-2">{sessionStats.correct} / {currentSession.length}</span></div>
+        <div className="text-9xl animate-bounce-gentle">🎁</div>
+        <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6 backdrop-blur bg-white/10">タップして開封</div>
       </div>
     );
   }
@@ -568,23 +718,23 @@ const App = () => {
   if (screen === 'gacha_result' && gachaItem) {
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden">
+        <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl">
           <div className="absolute inset-0 bg-gradient-to-tr from-slate-100 to-slate-200 -z-10"></div>
           <div className="text-xs font-black text-slate-400 mb-4 tracking-[0.3em]">GET ITEM!</div>
           <div className={`w-48 h-64 mx-auto rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative ${gachaItem.rarity===3?'border-yellow-400':gachaItem.rarity===2?'border-blue-400':'border-slate-300'}`}>
              {isNewItem && <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow animate-bounce">NEW</div>}
-             <div className="text-7xl mb-2">{gachaItem.icon}</div>
+             <div className="text-7xl mb-2 drop-shadow-md">{gachaItem.icon}</div>
              <div className="font-bold text-slate-700 text-lg px-2">{gachaItem.name}</div>
           </div>
           <div className="text-2xl font-black text-slate-400 mb-2">{gachaItem.rarity===3?'SUPER RARE':gachaItem.rarity===2?'RARE':'COMMON'}</div>
           <p className="text-slate-500 text-xs mb-8">{gachaItem.desc}</p>
-          <button onClick={() => setScreen('home')} className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg">トップへ戻る</button>
+          <button type="button" onClick={() => setScreen('home')} className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform">トップへ戻る</button>
         </div>
       </div>
     );
   }
 
-  return <div>Loading...</div>;
+  return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading...</div>;
 };
 
 // Render
