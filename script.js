@@ -193,15 +193,33 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   
   // ステップインデックスに基づく表示内容の決定
   const currentStep = stepIndex >= 0 && stepIndex < steps.length ? steps[stepIndex] : null;
-  const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。";
+  const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。（右下の▶ボタンで進む）";
   
+  // 表示済みアイテムの計算
+  const revealedDebits = new Set();
+  const revealedCredits = new Set();
+  
+  // 現在のステップまでループして、表示すべきキーを収集
+  for (let i = 0; i <= stepIndex; i++) {
+      const s = steps[i];
+      if (s) {
+          if (s.debitKey) revealedDebits.add(s.debitKey);
+          if (s.creditKey) revealedCredits.add(s.creditKey);
+          // サマリーステップ（最終ステップ付近）で強制表示フラグがある場合などを考慮
+          if (s.showAll) {
+             q.correctEntries.debit.forEach(d => revealedDebits.add(d.accountName));
+             q.correctEntries.credit.forEach(c => revealedCredits.add(c.accountName));
+          }
+      }
+  }
+
   // テキストハイライト処理
-  // 文字が太くなると幅が変わって視認性が悪くなるため、背景色のみ変更する
+  // 視認性向上のため、太字(font-bold)は使わず背景色のみ変更
   const displayHtml = currentStep && currentStep.highlight
-    ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm">${currentStep.highlight}</span>`)
+    ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm transition-all duration-300">${currentStep.highlight}</span>`)
     : q.text;
 
-  // 借方・貸方のハイライト判定
+  // 借方・貸方のエリアハイライト（背景色）
   const isDebitHighlight = currentStep && currentStep.debit;
   const isCreditHighlight = currentStep && currentStep.credit;
 
@@ -228,26 +246,38 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
            />
          </div>
          
-         <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+         <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-h-[200px]">
             <div className="bg-slate-50 border-b border-slate-200 p-2 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
               仕訳プロセス
             </div>
-            <div className="grid grid-cols-2 divide-x divide-slate-100 text-sm">
-               <div className={`p-3 transition-colors duration-300 ${isDebitHighlight ? 'bg-blue-50' : ''}`}>
+            <div className="grid grid-cols-2 divide-x divide-slate-100 text-sm h-full">
+               <div className={`p-3 transition-colors duration-500 ${isDebitHighlight ? 'bg-blue-50' : ''}`}>
                  <div className="text-center text-xs text-blue-500 font-bold mb-2">借方</div>
-                 {q.correctEntries.debit.map((d, i) => (
-                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isDebitHighlight && (!currentStep.debitKey || currentStep.debitKey === d.accountName) ? 'bg-blue-200 scale-105' : ''}`}>
-                     <span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span>
-                   </div>
-                 ))}
+                 <div className="space-y-2">
+                 {q.correctEntries.debit.map((d, i) => {
+                   const isVisible = revealedDebits.has(d.accountName);
+                   return (
+                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0 border-blue-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
+                       <span className="font-bold text-slate-700">{d.accountName}</span>
+                       <span className="font-mono text-slate-500">{d.amount.toLocaleString()}</span>
+                     </div>
+                   );
+                 })}
+                 </div>
                </div>
-               <div className={`p-3 transition-colors duration-300 ${isCreditHighlight ? 'bg-red-50' : ''}`}>
+               <div className={`p-3 transition-colors duration-500 ${isCreditHighlight ? 'bg-red-50' : ''}`}>
                  <div className="text-center text-xs text-red-500 font-bold mb-2">貸方</div>
-                 {q.correctEntries.credit.map((c, i) => (
-                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isCreditHighlight && (!currentStep.creditKey || currentStep.creditKey === c.accountName) ? 'bg-red-200 scale-105' : ''}`}>
-                     <span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span>
-                   </div>
-                 ))}
+                 <div className="space-y-2">
+                 {q.correctEntries.credit.map((c, i) => {
+                   const isVisible = revealedCredits.has(c.accountName);
+                   return (
+                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0 border-red-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
+                       <span className="font-bold text-slate-700">{c.accountName}</span>
+                       <span className="font-mono text-slate-500">{c.amount.toLocaleString()}</span>
+                     </div>
+                   );
+                 })}
+                 </div>
                </div>
             </div>
          </div>
@@ -256,7 +286,7 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
       {/* Bottom Controls */}
       <div className="bg-white border-t border-slate-200 p-4 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10 pb-8">
         <div className="max-w-2xl mx-auto space-y-4">
-          <div className="relative bg-yellow-50 p-4 rounded-xl border border-yellow-200 min-h-[5rem] flex items-center shadow-sm">
+          <div className="relative bg-yellow-50 p-4 rounded-xl border border-yellow-200 min-h-[5rem] flex items-center shadow-sm transition-all">
             <div className="absolute -top-3 left-4 bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-200">POINT</div>
             <p className="text-base md:text-lg font-medium text-slate-800 w-full animate-fade-in whitespace-pre-wrap">
               {currentComment}
@@ -404,7 +434,8 @@ const App = () => {
         comment: `最後に貸借の金額が一致していることを確認します。\n\n【解説】\n${explText}`,
         highlight: "",
         debit: true,
-        credit: true
+        credit: true,
+        showAll: true // Flag to ensure all are visible
       });
       
       return steps;
