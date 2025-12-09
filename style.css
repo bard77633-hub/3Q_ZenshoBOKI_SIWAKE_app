@@ -14,16 +14,9 @@
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in-up {
   animation: fadeInUp 0.3s ease-out forwards;
 }
@@ -33,7 +26,7 @@
   to { opacity: 1; }
 }
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out;
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
 /* Button Shine Effect */
@@ -73,25 +66,37 @@
 
 /* Batter Swing */
 .swing-anim {
-  animation: swing 0.4s forwards;
+  animation: swing 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 @keyframes swing {
   0% { transform: rotate(0deg); }
-  50% { transform: rotate(-30deg) scale(0.9); }
-  100% { transform: rotate(45deg) scale(1.1); }
+  40% { transform: rotate(-30deg) scale(0.9); }
+  100% { transform: rotate(60deg) scale(1.1); }
 }
 
-/* Ball Fly Animation (Controlled by JS for duration) */
+/* Ball Fly Animation */
+/* Start position must match the "hit" point relative to container */
 .ball-fly {
   display: block !important;
-  animation-name: flyParabola;
-  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  animation-fill-mode: forwards;
+  animation: flyParabola 2s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
 }
+
 @keyframes flyParabola {
-  0% { bottom: 5rem; left: 6rem; transform: scale(1); }
-  50% { bottom: 60%; left: 50%; transform: scale(1.5); }
-  100% { bottom: 80%; left: 120%; transform: scale(0.5); }
+  0% { 
+    bottom: 25%; /* Near batter's bat height */
+    left: 20%; 
+    transform: scale(1) translateX(0) translateY(0); 
+  }
+  20% {
+    bottom: 60%;
+    left: 40%;
+    transform: scale(1.8);
+  }
+  100% { 
+    bottom: 120%; /* Fly off top right */
+    left: 150%; 
+    transform: scale(0.5); 
+  }
 }
 
 /* Pop In Animation for Gacha */
@@ -104,15 +109,10 @@
   animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Collection Card Styles */
-.rarity-common { border-color: #cbd5e1; background: linear-gradient(to bottom right, #f8fafc, #e2e8f0); }
-.rarity-rare { border-color: #3b82f6; background: linear-gradient(to bottom right, #eff6ff, #bfdbfe); }
-.rarity-super { border-color: #eab308; background: linear-gradient(to bottom right, #fefce8, #fde047); box-shadow: 0 4px 6px -1px rgba(234, 179, 8, 0.3); }
-
 /* Bounce Text */
 @keyframes bounceCustom {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-20px) rotate(-3deg); }
 }
 .animate-bounce-custom {
   animation: bounceCustom 1s infinite;
@@ -120,5 +120,68 @@
 
 /* Unobtained Item */
 .item-locked {
-  filter: grayscale(100%) opacity(0.4);
+  filter: grayscale(100%) opacity(0.5);
+  background-image: repeating-linear-gradient(45deg, #f1f5f9 0px, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px) !important;
+}
+
+/* --- Card Rarity Styles --- */
+
+/* Common */
+.rarity-common {
+  border-color: #cbd5e1;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+}
+.text-common { color: #94a3b8; }
+.bg-common-badge { background-color: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+
+/* Rare */
+.rarity-rare {
+  border-color: #60a5fa;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+}
+.text-rare { color: #3b82f6; }
+.bg-rare-badge { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+/* Super Rare */
+.rarity-super {
+  border-color: #fbbf24;
+  background: radial-gradient(circle at 50% 30%, #fefce8, #fde047);
+  box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+  position: relative;
+}
+/* Holographic sheen for Super Rare */
+.rarity-super::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg, 
+    transparent 40%, 
+    rgba(255, 255, 255, 0.8) 45%, 
+    rgba(255, 255, 255, 0) 50%
+  );
+  transform: rotate(30deg);
+  animation: holoSheen 3s infinite linear;
+  pointer-events: none;
+}
+@keyframes holoSheen {
+  0% { transform: translateY(0) rotate(30deg); }
+  100% { transform: translateY(50%) rotate(30deg); }
+}
+.text-super { color: #d97706; }
+.bg-super-badge { background-color: #fffbeb; color: #d97706; border-color: #fde68a; }
+
+/* --- Complete Theme (Gold) --- */
+.bg-complete {
+  background: linear-gradient(to bottom, #fffbeb, #fef3c7) !important;
+}
+.bg-complete .text-blue-800 {
+  color: #b45309 !important; /* Gold/Bronze text */
+}
+.bg-complete #app-title::after {
+  content: " 👑";
 }
