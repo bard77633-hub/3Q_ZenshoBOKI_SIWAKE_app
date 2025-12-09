@@ -196,7 +196,6 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。";
   
   // テキストハイライト処理
-  // 文字が太くなると幅が変わって視認性が悪くなるため、背景色のみ変更する
   const displayHtml = currentStep && currentStep.highlight
     ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm">${currentStep.highlight}</span>`)
     : q.text;
@@ -289,7 +288,49 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   );
 };
 
-// 4. Main App Component
+// 4. Review Modal (New)
+const ReviewModal = ({ results, onClose }) => {
+  const incorrects = results.filter(r => !r.isCorrect);
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="bg-white w-full max-w-lg rounded-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+         <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-700">間違えた問題 ({incorrects.length}問)</h3>
+            <button onClick={onClose} className="text-slate-400 font-bold px-2">✕</button>
+         </div>
+         <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-100">
+            {incorrects.map((res, i) => (
+               <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <div className="text-xs font-bold text-slate-400 mb-1">Q.{res.q.id}</div>
+                  <div className="text-sm font-medium text-slate-800 mb-3">{res.q.text}</div>
+                  <div className="bg-green-50 border border-green-100 rounded p-2 text-xs">
+                     <div className="text-[10px] text-green-600 font-bold mb-1 text-center">正解の仕訳</div>
+                     <div className="flex justify-between gap-2">
+                        <div className="w-1/2 border-r border-green-200 pr-1">
+                           <div className="text-center text-[10px] text-slate-400">借方</div>
+                           {res.q.correctEntries.debit.map((d,k)=><div key={k} className="flex justify-between"><span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}
+                        </div>
+                        <div className="w-1/2 pl-1">
+                           <div className="text-center text-[10px] text-slate-400">貸方</div>
+                           {res.q.correctEntries.credit.map((c,k)=><div key={k} className="flex justify-between"><span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}
+                        </div>
+                     </div>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500 leading-relaxed bg-slate-50 p-2 rounded">
+                    <span className="font-bold">解説: </span>{res.q.explanation}
+                  </div>
+               </div>
+            ))}
+         </div>
+         <div className="p-4 bg-white border-t">
+            <button onClick={onClose} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl">閉じる</button>
+         </div>
+      </div>
+    </div>
+  );
+};
+
+// 5. Main App Component
 const App = () => {
   const [screen, setScreen] = useState('home'); // home, game, result, collection, explanation, gacha
   const [userStats, setUserStats] = useState({ correct: 0, total: 0, history: [], categoryScores: {}, inventory: [] });
@@ -305,6 +346,10 @@ const App = () => {
   const [sessionStats, setSessionStats] = useState({ correct: 0 });
   const [showResultModal, setShowResultModal] = useState(false);
   const [lastResult, setLastResult] = useState(null); // { isCorrect, q }
+  
+  // New States for Review
+  const [sessionResults, setSessionResults] = useState([]); // Array of { q, isCorrect }
+  const [showReview, setShowReview] = useState(false);
 
   // Gacha State
   const [gachaItem, setGachaItem] = useState(null);
@@ -405,6 +450,7 @@ const App = () => {
     });
 
     setCurrentSession(session);
+    setSessionResults([]); // Reset results for new session
     setCurrentIndex(0);
     setSessionStats({ correct: 0 });
     setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
@@ -483,6 +529,7 @@ const App = () => {
         });
     }
 
+    setSessionResults(prev => [...prev, { q, isCorrect }]); // Track result
     setLastResult({ isCorrect, q });
     setShowResultModal(true);
   };
@@ -748,9 +795,10 @@ const App = () => {
   // --- Gacha Screens ---
   if (screen === 'gacha_open') {
     const isZeroScore = sessionStats.correct === 0;
+    const hasWrong = sessionResults.some(r => !r.isCorrect);
     
     return (
-      <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-50 cursor-default">
+      <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-50 cursor-default" onClick={isZeroScore ? undefined : doGacha}>
         <div className="text-white text-2xl font-bold mb-8 animate-fade-in-up">
           {isZeroScore ? "残念..." : "お疲れ様でした！"}
         </div>
@@ -772,12 +820,29 @@ const App = () => {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center cursor-pointer" onClick={doGacha}>
+          <div className="flex flex-col items-center cursor-pointer">
             <div className="text-9xl animate-bounce-gentle">🎁</div>
             <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6 backdrop-blur bg-white/10">
               タップして開封
             </div>
           </div>
+        )}
+
+        {hasWrong && (
+          <button 
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowReview(true); }}
+            className="mt-8 bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-8 rounded-full border border-white/40 backdrop-blur-sm transition-all text-sm flex items-center gap-2 z-50"
+          >
+            <span>📝</span> 間違えた問題を振り返る
+          </button>
+        )}
+
+        {showReview && (
+          <ReviewModal 
+            results={sessionResults} 
+            onClose={(e) => { if(e) e.stopPropagation(); setShowReview(false); }} 
+          />
         )}
       </div>
     );
