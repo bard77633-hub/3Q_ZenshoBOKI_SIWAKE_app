@@ -196,6 +196,7 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。";
   
   // テキストハイライト処理
+  // 文字が太くなると幅が変わって視認性が悪くなるため、背景色のみ変更する
   const displayHtml = currentStep && currentStep.highlight
     ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm">${currentStep.highlight}</span>`)
     : q.text;
@@ -235,7 +236,7 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
                <div className={`p-3 transition-colors duration-300 ${isDebitHighlight ? 'bg-blue-50' : ''}`}>
                  <div className="text-center text-xs text-blue-500 font-bold mb-2">借方</div>
                  {q.correctEntries.debit.map((d, i) => (
-                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isDebitHighlight && (!currentStep.debitKey || currentStep.debitKey === d.accountName) ? 'bg-blue-200 font-bold scale-105' : ''}`}>
+                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isDebitHighlight && (!currentStep.debitKey || currentStep.debitKey === d.accountName) ? 'bg-blue-200 scale-105' : ''}`}>
                      <span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span>
                    </div>
                  ))}
@@ -243,7 +244,7 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
                <div className={`p-3 transition-colors duration-300 ${isCreditHighlight ? 'bg-red-50' : ''}`}>
                  <div className="text-center text-xs text-red-500 font-bold mb-2">貸方</div>
                  {q.correctEntries.credit.map((c, i) => (
-                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isCreditHighlight && (!currentStep.creditKey || currentStep.creditKey === c.accountName) ? 'bg-red-200 font-bold scale-105' : ''}`}>
+                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isCreditHighlight && (!currentStep.creditKey || currentStep.creditKey === c.accountName) ? 'bg-red-200 scale-105' : ''}`}>
                      <span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span>
                    </div>
                  ))}
@@ -299,28 +300,32 @@ const ReviewModal = ({ results, onClose }) => {
             <button onClick={onClose} className="text-slate-400 font-bold px-2">✕</button>
          </div>
          <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-100">
-            {incorrects.map((res, i) => (
-               <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                  <div className="text-xs font-bold text-slate-400 mb-1">Q.{res.q.id}</div>
-                  <div className="text-sm font-medium text-slate-800 mb-3">{res.q.text}</div>
-                  <div className="bg-green-50 border border-green-100 rounded p-2 text-xs">
-                     <div className="text-[10px] text-green-600 font-bold mb-1 text-center">正解の仕訳</div>
-                     <div className="flex justify-between gap-2">
-                        <div className="w-1/2 border-r border-green-200 pr-1">
-                           <div className="text-center text-[10px] text-slate-400">借方</div>
-                           {res.q.correctEntries.debit.map((d,k)=><div key={k} className="flex justify-between"><span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}
-                        </div>
-                        <div className="w-1/2 pl-1">
-                           <div className="text-center text-[10px] text-slate-400">貸方</div>
-                           {res.q.correctEntries.credit.map((c,k)=><div key={k} className="flex justify-between"><span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}
-                        </div>
-                     </div>
-                  </div>
-                  <div className="mt-2 text-xs text-slate-500 leading-relaxed bg-slate-50 p-2 rounded">
-                    <span className="font-bold">解説: </span>{res.q.explanation}
-                  </div>
-               </div>
-            ))}
+            {incorrects.length === 0 ? (
+                <div className="text-center text-slate-400 py-8">間違えた問題はありません。<br/>素晴らしい！</div>
+            ) : (
+                incorrects.map((res, i) => (
+                   <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="text-xs font-bold text-slate-400 mb-1">Q.{res.q.id}</div>
+                      <div className="text-sm font-medium text-slate-800 mb-3">{res.q.text}</div>
+                      <div className="bg-green-50 border border-green-100 rounded p-2 text-xs">
+                         <div className="text-[10px] text-green-600 font-bold mb-1 text-center">正解の仕訳</div>
+                         <div className="flex justify-between gap-2">
+                            <div className="w-1/2 border-r border-green-200 pr-1">
+                               <div className="text-center text-[10px] text-slate-400">借方</div>
+                               {res.q.correctEntries.debit.map((d,k)=><div key={k} className="flex justify-between"><span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}
+                            </div>
+                            <div className="w-1/2 pl-1">
+                               <div className="text-center text-[10px] text-slate-400">貸方</div>
+                               {res.q.correctEntries.credit.map((c,k)=><div key={k} className="flex justify-between"><span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}
+                            </div>
+                         </div>
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500 leading-relaxed bg-slate-50 p-2 rounded">
+                        <span className="font-bold">解説: </span>{res.q.explanation}
+                      </div>
+                   </div>
+                ))
+            )}
          </div>
          <div className="p-4 bg-white border-t">
             <button onClick={onClose} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl">閉じる</button>
@@ -363,7 +368,7 @@ const App = () => {
 
   // Initialization
   useEffect(() => {
-    // Helper to generate auto steps if none exist
+    // Helper to generate auto steps if none exist (Modified for step-by-step account)
     const generateAutoSteps = (q, explText) => {
       const steps = [];
       
@@ -411,6 +416,8 @@ const App = () => {
       const explText = expl ? expl.explanation : "解説準備中";
       
       // Use predefined steps if available, otherwise generate auto steps
+      // Note: Even if predefined steps exist, you might want to review them if they don't follow the "one-by-one" rule.
+      // For now, if no steps defined, we use our new logic.
       const steps = (expl && expl.steps) ? expl.steps : generateAutoSteps(q, explText);
 
       return { 
