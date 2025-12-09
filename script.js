@@ -2,10 +2,12 @@
 
 /**
  * Zensho Bookkeeping Grade 3 Practice App
- * Logic Controller - V10 (Refactored & Enhanced Gacha)
+ * Logic Controller - V13 (Files Separated & New Gacha Logic)
  * 
  * Dependencies:
- * - data.js (Randomizer, COLLECTION_ITEMS, GENRE_STRUCTURE, QUESTIONS) must be loaded first.
+ * - data.js (Randomizer, COLLECTION_ITEMS, GENRE_STRUCTURE)
+ * - questions.js (RAW_QUESTIONS)
+ * - explanations.js (EXPLANATIONS)
  */
 
 // --- Utilities ---
@@ -17,6 +19,25 @@ function shuffleArray(array) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+// --- Data Merge ---
+// Combine RAW_QUESTIONS and EXPLANATIONS into one QUESTIONS array
+let QUESTIONS = [];
+function mergeData() {
+  if (typeof RAW_QUESTIONS !== 'undefined' && typeof EXPLANATIONS !== 'undefined') {
+    QUESTIONS = RAW_QUESTIONS.map(q => {
+      const expl = EXPLANATIONS[q.id];
+      return { 
+        ...q, 
+        explanation: expl ? expl.explanation : "", 
+        explanationSteps: q.explanationSteps || (expl ? expl.steps : []) 
+      };
+    });
+    console.log(`Loaded ${QUESTIONS.length} questions.`);
+  } else {
+    console.error("Data files not loaded correctly.");
+  }
 }
 
 // --- State ---
@@ -53,7 +74,8 @@ let userStats = {
 // --- Core Logic ---
 
 function initApp() {
-  console.log("App Initializing V10...");
+  console.log("App Initializing V13...");
+  mergeData(); // Merge separated data
   loadStats();
   renderHomeStats();
   renderHomeMenu();
@@ -228,7 +250,7 @@ function showHomeScreen() {
   document.getElementById('game-screen').classList.add('hidden');
   document.getElementById('home-screen').classList.remove('hidden');
   document.getElementById('result-modal').classList.add('hidden');
-  document.getElementById('gacha-opening-screen').classList.add('hidden'); // Ensure opening screen is hidden
+  document.getElementById('gacha-opening-screen').classList.add('hidden');
   document.getElementById('gacha-result-modal').classList.add('hidden');
   document.getElementById('explanation-screen').classList.add('hidden');
   document.getElementById('collection-screen').classList.add('hidden');
@@ -280,7 +302,7 @@ function showCollectionScreen() {
         <div class="text-3xl mb-1 opacity-20">🔒</div>
         <div class="text-[10px] text-slate-300 font-bold">No.${item.id}</div>
       `;
-      el.onclick = () => { /* Play lock sound or small shake? */ };
+      el.onclick = () => { /* Play lock sound */ };
     }
     grid.appendChild(el);
   });
@@ -600,28 +622,65 @@ function drawGachaItem(scorePercent) {
   if (scorePercent === 1.0) probs = { common: 20, rare: 50, super: 30 };
   else if (scorePercent >= 0.8) probs = { common: 40, rare: 50, super: 10 };
   else if (scorePercent >= 0.6) probs = { common: 60, rare: 35, super: 5 };
+  else if (scorePercent > 0) probs = { common: 90, rare: 10, super: 0 };
+  else probs = { common: 100, rare: 0, super: 0 };
 
-  const roll = Math.random() * 100;
-  let targetRarity = 1;
-  if (roll < probs.super) targetRarity = 3;
-  else if (roll < probs.super + probs.rare) targetRarity = 2;
-  
-  const pool = COLLECTION_ITEMS.filter(i => i.rarity === targetRarity);
-  
-  // Prefer new items
-  let selectedItem = pool[Math.floor(Math.random() * pool.length)];
-  for(let i=0; i<3; i++) {
-    if (userStats.inventory.includes(selectedItem.id)) {
-      selectedItem = pool[Math.floor(Math.random() * pool.length)];
-    } else { break; }
+  // Helper to pick rarity
+  const pickRarity = () => {
+      const roll = Math.random() * 100;
+      if (roll < probs.super) return 3;
+      if (roll < probs.super + probs.rare) return 2;
+      return 1;
+  };
+
+  // Helper to get random item of rarity
+  const getRandomItemOfRarity = (rarity) => {
+      const pool = COLLECTION_ITEMS.filter(i => i.rarity === rarity);
+      return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  // --- Logic for 0% Score ---
+  // Must return a DUPLICATE low rarity (common) if available.
+  if (scorePercent === 0) {
+      const ownedCommons = userStats.inventory.filter(id => {
+          const item = COLLECTION_ITEMS.find(i => i.id === id);
+          return item && item.rarity === 1;
+      });
+      
+      let selectedItem;
+      if (ownedCommons.length > 0) {
+          // Force Duplicate Common
+          const id = ownedCommons[Math.floor(Math.random() * ownedCommons.length)];
+          selectedItem = COLLECTION_ITEMS.find(i => i.id === id);
+      } else {
+          // No commons owned? Just give random common.
+          selectedItem = getRandomItemOfRarity(1);
+      }
+      presentGachaResult(selectedItem, false); // isNew effectively false for logic, but UI might show NEW if user really had 0 items. 
+      // Actually if user had 0 items, isNew checks will verify.
+      return;
   }
 
-  const isNew = !userStats.inventory.includes(selectedItem.id);
+  // --- Normal Draw ---
+  let rarity = pickRarity();
+  let item = getRandomItemOfRarity(rarity);
+  
+  // Reroll Once if Duplicate (Rare+)
+  if (rarity >= 2 && userStats.inventory.includes(item.id)) {
+      console.log("Duplicate Rare+ drawn. Rerolling once...");
+      item = getRandomItemOfRarity(rarity);
+  }
+
+  const isNew = !userStats.inventory.includes(item.id);
   if (isNew) {
-    userStats.inventory.push(selectedItem.id);
-    saveStats();
+      userStats.inventory.push(item.id);
+      saveStats();
   }
+  
+  presentGachaResult(item, isNew);
+}
 
+function presentGachaResult(selectedItem, isNew) {
   // Populate Modal
   const modal = document.getElementById('gacha-result-modal');
   const card = document.getElementById('gacha-card');
@@ -636,10 +695,16 @@ function drawGachaItem(scorePercent) {
   name.textContent = selectedItem.name;
   desc.textContent = selectedItem.desc;
   
+  // Double check isNew against inventory just to be safe if passed incorrectly (e.g. 0% case)
+  const actuallyNew = !userStats.inventory.includes(selectedItem.id) || (isNew && userStats.inventory.includes(selectedItem.id)); 
+  // Wait, if 0% logic picked a duplicate, actuallyNew is false.
+  // If 0% logic picked a random common and user had none, actuallyNew is true.
+  
   if (isNew) badge.classList.remove('hidden');
   else badge.classList.add('hidden');
 
   // Rarity Styling
+  // Reset classes first
   card.className = "w-48 h-64 rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative overflow-hidden transition-transform duration-300 group";
   
   if (selectedItem.rarity === 1) {
@@ -665,7 +730,6 @@ function drawGachaItem(scorePercent) {
   modal.classList.remove('hidden');
   requestAnimationFrame(() => modal.classList.remove('opacity-0'));
   
-  // Update stats if new item added
   if(isNew) renderHomeStats();
 }
 

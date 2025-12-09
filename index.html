@@ -320,7 +320,7 @@
       <div class="text-white text-2xl font-bold mb-8 animate-fade-in-up">お疲れ様でした！</div>
       <div class="text-white text-xl mb-12 animate-fade-in-up" style="animation-delay: 0.1s;">正解数: <span id="gacha-score-display" class="font-mono text-4xl text-yellow-400 font-bold ml-2"></span></div>
       
-      <div id="gacha-box-container" class="cursor-pointer group relative animate-fade-in-up" style="animation-delay: 0.2s;">
+      <div id="gacha-box-container" class="cursor-pointer group relative animate-fade-in-up flex flex-col items-center justify-center" style="animation-delay: 0.2s;">
          <!-- Glow effect behind box -->
          <div class="absolute inset-0 bg-yellow-400 blur-3xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 rounded-full scale-150"></div>
          
@@ -367,8 +367,10 @@
       </div>
     </div>
 
-    <!-- Data Script MUST load before main script -->
+    <!-- Data Scripts -->
     <script src="data.js"></script>
+    <script src="questions.js"></script>
+    <script src="explanations.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
