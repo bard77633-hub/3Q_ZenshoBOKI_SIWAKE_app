@@ -491,8 +491,8 @@ const App = () => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [lastResult, setLastResult] = useState(null); 
   
-  // Transition State
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  // Next Button Delay State
+  const [isNextButtonDisabled, setIsNextButtonDisabled] = useState(false);
 
   // Review State
   const [sessionResults, setSessionResults] = useState([]); 
@@ -518,6 +518,17 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('zensho_bookkeeping_v3', JSON.stringify(userStats));
   }, [userStats]);
+
+  // Handle Next Button Delay
+  useEffect(() => {
+    if (showResultModal) {
+      setIsNextButtonDisabled(true);
+      const timer = setTimeout(() => {
+        setIsNextButtonDisabled(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showResultModal]);
 
   // --- Actions ---
 
@@ -630,45 +641,40 @@ const App = () => {
   };
 
   const nextQuestion = () => {
-    setIsTransitioning(true); // Start loading state
-    
-    setTimeout(() => {
-        setShowResultModal(false);
-        if (currentIndex + 1 < currentSession.length) {
-          setCurrentIndex(prev => prev + 1);
-          setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
-          setCreditLines([{ id: generateId(), accountName: null, amount: 0 }]);
-        } else {
-          // Session Ended: Update Best Score
-          if (sessionMode === 'sub') {
-             const subId = currentSession[0].sub;
-             if (subId) {
-                 const finalCorrect = sessionStats.correct;
-                 const finalTotal = currentSession.length;
-                 
-                 setUserStats(prev => {
-                     const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 };
-                     const prevRate = (prev.categoryScores[subId] ? prevScore.correct / prevScore.total : -1);
-                     const currentRate = finalCorrect / finalTotal;
+    setShowResultModal(false);
+    if (currentIndex + 1 < currentSession.length) {
+      setCurrentIndex(prev => prev + 1);
+      setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
+      setCreditLines([{ id: generateId(), accountName: null, amount: 0 }]);
+    } else {
+      // Session Ended: Update Best Score
+      if (sessionMode === 'sub') {
+         const subId = currentSession[0].sub;
+         if (subId) {
+             const finalCorrect = sessionStats.correct;
+             const finalTotal = currentSession.length;
+             
+             setUserStats(prev => {
+                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 };
+                 const prevRate = (prev.categoryScores[subId] ? prevScore.correct / prevScore.total : -1);
+                 const currentRate = finalCorrect / finalTotal;
 
-                     if (currentRate > prevRate || (currentRate === prevRate && finalTotal > prevScore.total)) {
-                         return {
-                             ...prev,
-                             categoryScores: {
-                                 ...prev.categoryScores,
-                                 [subId]: { correct: finalCorrect, total: finalTotal }
-                             }
-                         };
-                     }
-                     return prev;
-                 });
-             }
-          }
+                 if (currentRate > prevRate || (currentRate === prevRate && finalTotal > prevScore.total)) {
+                     return {
+                         ...prev,
+                         categoryScores: {
+                             ...prev.categoryScores,
+                             [subId]: { correct: finalCorrect, total: finalTotal }
+                         }
+                     };
+                 }
+                 return prev;
+             });
+         }
+      }
 
-          setScreen('gacha_open');
-        }
-        setIsTransitioning(false); // End loading state
-    }, 1000); // 1 second delay
+      setScreen('gacha_open');
+    }
   };
 
   const doGacha = () => {
@@ -835,10 +841,10 @@ const App = () => {
                 <button 
                   type="button" 
                   onClick={nextQuestion} 
-                  disabled={isTransitioning}
+                  disabled={isNextButtonDisabled}
                   className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isTransitioning ? "Next..." : "次の問題へ"}
+                  次の問題へ
                 </button>
               </div>
             </div>
