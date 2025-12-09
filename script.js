@@ -2,7 +2,7 @@
 
 /**
  * Zensho Bookkeeping Grade 3 Practice App
- * Logic Controller - V14 (Calculator Fix & Cache Busting)
+ * Logic Controller - V15 (Reactivity Fix)
  * 
  * Dependencies:
  * - data.js (Randomizer, COLLECTION_ITEMS, GENRE_STRUCTURE)
@@ -79,7 +79,7 @@ let userStats = {
 // --- Core Logic ---
 
 function initApp() {
-  console.log("App Initializing V14...");
+  console.log("App Initializing V15...");
   mergeData(); 
   loadStats();
   renderHomeStats();
@@ -132,6 +132,8 @@ function initApp() {
   setupKeypad();
   document.getElementById('keypad-close').addEventListener('click', closeKeypad);
   document.getElementById('key-enter').addEventListener('click', confirmAmount);
+  
+  // Keypad controls
   document.getElementById('key-clear').addEventListener('click', () => {
     // Clear Calculator State fully
     state.calc.operand = null;
@@ -140,17 +142,27 @@ function initApp() {
     updateKeypadDisplay("0");
   });
   document.getElementById('key-backspace').addEventListener('click', () => {
-    if (state.calc.resetDisplay) return; // Don't backspace if we are about to type new number
+    if (state.calc.resetDisplay) return; 
     const current = state.tempAmount;
     updateKeypadDisplay(current.length > 1 ? current.slice(0, -1) : "0");
   });
   
-  // Calculator Event Listeners
-  document.getElementById('toggle-calc-btn').addEventListener('click', toggleCalculator);
-  document.querySelectorAll('.calc-op-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleCalcOperator(btn.getAttribute('data-op')));
+  // Calculator Event Listeners - Fixed binding logic
+  document.getElementById('toggle-calc-btn').onclick = toggleCalculator;
+  
+  // Bind calc buttons using delegation to be safe, or direct robust binding
+  const calcOps = document.querySelectorAll('.calc-op-btn');
+  calcOps.forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      handleCalcOperator(btn.getAttribute('data-op'));
+    };
   });
-  document.getElementById('calc-eq-btn').addEventListener('click', handleCalcEqual);
+  
+  document.getElementById('calc-eq-btn').onclick = (e) => {
+    e.preventDefault();
+    handleCalcEqual();
+  };
 }
 
 // --- Menu Rendering ---
@@ -169,6 +181,7 @@ function renderHomeMenu() {
     const mixBtn = document.createElement('button');
     mixBtn.className = "text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold hover:bg-blue-200 transition-colors";
     mixBtn.innerHTML = "まとめ (5問)";
+    mixBtn.type = "button";
     mixBtn.onclick = () => startSession('major', major.id, major.title);
     header.appendChild(title);
     header.appendChild(mixBtn);
@@ -177,6 +190,7 @@ function renderHomeMenu() {
     subContainer.className = "divide-y divide-slate-100";
     major.subs.forEach(sub => {
       const subRow = document.createElement('button');
+      subRow.type = "button";
       subRow.className = "w-full text-left p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors flex justify-between items-center";
       subRow.onclick = () => startSession('sub', sub.id, sub.title);
       const subName = document.createElement('span');
@@ -273,7 +287,6 @@ function showHomeScreen() {
   window.scrollTo(0, 0);
 }
 
-// --- Collection & Gacha logic (omitted specific DOM manipulation for brevity, same as before) ---
 function showCollectionScreen() {
   const screen = document.getElementById('collection-screen');
   const grid = document.getElementById('collection-grid');
@@ -335,7 +348,6 @@ function showItemDetail(item) {
 }
 function hideItemDetail() { const modal = document.getElementById('item-detail-modal'); modal.classList.add('opacity-0'); setTimeout(() => { modal.classList.add('hidden'); }, 300); }
 
-// --- Question Rendering & Input ---
 function loadQuestion() {
   const q = state.currentSessionQueue[state.currentIndex];
   document.getElementById('progress-text').textContent = `${state.currentIndex + 1} / ${state.currentSessionQueue.length}`;
@@ -400,6 +412,7 @@ function renderSide(side) {
       text.textContent = line.accountName;
       const removeBtn = document.createElement('button');
       removeBtn.textContent = "✕";
+      removeBtn.type = "button";
       removeBtn.className = "absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 font-bold p-2 z-10";
       removeBtn.onclick = (e) => { e.stopPropagation(); line.accountName = null; renderLines(); };
       dropZone.appendChild(text); dropZone.appendChild(removeBtn);
@@ -416,6 +429,7 @@ function renderSide(side) {
     amountBox.innerHTML = `<span class="font-mono text-lg ${line.amount ? 'text-slate-800 font-bold' : 'text-slate-300'}">${line.amount > 0 ? line.amount.toLocaleString() : '金額'}</span>`;
     amountBox.onclick = () => openKeypad(line.id, side);
     const delBtn = document.createElement('button');
+    delBtn.type = "button";
     delBtn.className = "absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs shadow-sm opacity-0 group-hover:opacity-100 transition-opacity";
     delBtn.textContent = "−";
     if (lines.length > 1) { delBtn.onclick = (e) => { e.stopPropagation(); removeLine(line.id, side); }; row.appendChild(delBtn); }
@@ -438,7 +452,6 @@ function addLine(side) { const newLine = { id: generateId(), accountName: null, 
 function removeLine(id, side) { if (side === 'debit') state.debitLines = state.debitLines.filter(l => l.id !== id); else state.creditLines = state.creditLines.filter(l => l.id !== id); renderLines(); }
 function resetCurrentQuestion() { loadQuestion(); }
 
-// Keypad & Calculator
 function setupKeypad() {
   const container = document.querySelector('#keypad-content .grid-cols-3');
   if (!container) return;
@@ -450,7 +463,6 @@ function setupKeypad() {
     btn.type = 'button';
     btn.className = "bg-white text-slate-700 font-semibold text-2xl py-3 active:bg-slate-200 transition-colors touch-manipulation";
     btn.onclick = () => { 
-      // If we are in reset mode (after operator or equals), clear display first
       if(state.calc.resetDisplay) {
         updateKeypadDisplay(k);
         state.calc.resetDisplay = false;
@@ -470,12 +482,10 @@ function openKeypad(id, side) {
   const line = list.find(l => l.id === id);
   if (line) {
     state.tempAmount = line.amount === 0 ? "0" : line.amount.toString();
-    // Reset Calculator State on new open
     state.calc.operand = null;
     state.calc.operator = null;
     state.calc.resetDisplay = false;
     updateKeypadDisplay(state.tempAmount);
-    
     const backdrop = document.getElementById('keypad-backdrop');
     const wrapper = document.getElementById('keypad-wrapper');
     const content = document.getElementById('keypad-content');
@@ -511,7 +521,6 @@ function confirmAmount() {
   closeKeypad();
 }
 
-// Calculator Logic (Improved)
 function toggleCalculator() {
   const area = document.getElementById('calc-area');
   area.classList.toggle('hidden');
@@ -519,24 +528,19 @@ function toggleCalculator() {
 
 function handleCalcOperator(op) {
   const current = parseInt(state.tempAmount);
-  
-  // If we already have an operand and an operator, and we haven't just reset (meaning user typed something), calculate chain
   if (state.calc.operand !== null && state.calc.operator !== null && !state.calc.resetDisplay) {
     calculateIntermediate();
   } else {
-    // Just store current as operand
     state.calc.operand = current;
   }
-  
   state.calc.operator = op;
-  state.calc.resetDisplay = true; // Next digit input will clear display
+  state.calc.resetDisplay = true;
 }
 
 function calculateIntermediate() {
   const current = parseInt(state.tempAmount);
   let result = 0;
   const prev = state.calc.operand;
-  
   switch(state.calc.operator) {
     case '+': result = prev + current; break;
     case '-': result = prev - current; break;
@@ -546,7 +550,6 @@ function calculateIntermediate() {
       else result = Math.floor(prev / current); 
       break;
   }
-  
   state.calc.operand = result;
   updateKeypadDisplay(result.toString());
 }
@@ -554,13 +557,11 @@ function calculateIntermediate() {
 function handleCalcEqual() {
   if (state.calc.operand === null || state.calc.operator === null) return;
   calculateIntermediate();
-  // Reset operator after equals
   state.calc.operator = null;
   state.calc.operand = null;
-  state.calc.resetDisplay = true; // Result is shown, next typing starts new
+  state.calc.resetDisplay = true;
 }
 
-// Check Answer
 function checkAnswer() {
   const q = state.currentSessionQueue[state.currentIndex];
   const userDebit = state.debitLines.filter(l => l.accountName && l.amount > 0);
