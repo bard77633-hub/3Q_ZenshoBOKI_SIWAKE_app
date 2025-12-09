@@ -191,16 +191,18 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   const [stepIndex, setStepIndex] = useState(-1);
   const steps = q.explanationSteps || [];
   
-  // 安全策として、stepsがない場合はq.explanationを表示するだけのモードにする
-  const currentText = stepIndex === -1 
-    ? "まずは全体の流れを確認しましょう。" 
-    : (steps[stepIndex]?.comment || q.explanation);
+  // ステップインデックスに基づく表示内容の決定
+  const currentStep = stepIndex >= 0 && stepIndex < steps.length ? steps[stepIndex] : null;
+  const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。";
+  
+  // テキストハイライト処理
+  const displayHtml = currentStep && currentStep.highlight
+    ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 font-bold px-1 rounded shadow-sm">${currentStep.highlight}</span>`)
+    : q.text;
 
-  const displayHtml = stepIndex === -1 
-    ? q.text 
-    : (steps[stepIndex]?.highlight 
-        ? q.text.replace(steps[stepIndex].highlight, `<span class="bg-yellow-300 font-bold px-1 rounded">${steps[stepIndex].highlight}</span>`) 
-        : q.text);
+  // 借方・貸方のハイライト判定
+  const isDebitHighlight = currentStep && currentStep.debit;
+  const isCreditHighlight = currentStep && currentStep.credit;
 
   return (
     <div className="fixed inset-0 z-[60] bg-gray-100 flex flex-col animate-fade-in">
@@ -229,20 +231,19 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
             <div className="bg-slate-50 border-b border-slate-200 p-2 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
               仕訳プロセス
             </div>
-            {/* 簡易的な仕訳表示エリア（ステップに応じて表示を変えるなどの拡張が可能） */}
             <div className="grid grid-cols-2 divide-x divide-slate-100 text-sm">
-               <div className="p-3">
+               <div className={`p-3 transition-colors duration-300 ${isDebitHighlight ? 'bg-blue-50' : ''}`}>
                  <div className="text-center text-xs text-blue-500 font-bold mb-2">借方</div>
                  {q.correctEntries.debit.map((d, i) => (
-                   <div key={i} className={`flex justify-between mb-1 ${stepIndex >= 0 && steps[stepIndex]?.debit === d.accountName ? 'bg-blue-100 font-bold p-1 rounded' : ''}`}>
+                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isDebitHighlight && (!currentStep.debitKey || currentStep.debitKey === d.accountName) ? 'bg-blue-200 font-bold scale-105' : ''}`}>
                      <span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span>
                    </div>
                  ))}
                </div>
-               <div className="p-3">
+               <div className={`p-3 transition-colors duration-300 ${isCreditHighlight ? 'bg-red-50' : ''}`}>
                  <div className="text-center text-xs text-red-500 font-bold mb-2">貸方</div>
                  {q.correctEntries.credit.map((c, i) => (
-                   <div key={i} className={`flex justify-between mb-1 ${stepIndex >= 0 && steps[stepIndex]?.credit === c.accountName ? 'bg-red-100 font-bold p-1 rounded' : ''}`}>
+                   <div key={i} className={`flex justify-between mb-1 p-1 rounded transition-all ${isCreditHighlight && (!currentStep.creditKey || currentStep.creditKey === c.accountName) ? 'bg-red-200 font-bold scale-105' : ''}`}>
                      <span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span>
                    </div>
                  ))}
@@ -256,8 +257,8 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="relative bg-yellow-50 p-4 rounded-xl border border-yellow-200 min-h-[5rem] flex items-center shadow-sm">
             <div className="absolute -top-3 left-4 bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-200">POINT</div>
-            <p className="text-base md:text-lg font-medium text-slate-800 w-full animate-fade-in">
-              {currentText}
+            <p className="text-base md:text-lg font-medium text-slate-800 w-full animate-fade-in whitespace-pre-wrap">
+              {currentComment}
             </p>
           </div>
           <div className="flex items-center justify-between gap-4">
@@ -265,7 +266,7 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
               type="button"
               onClick={() => setStepIndex(prev => Math.max(-1, prev - 1))} 
               disabled={stepIndex <= -1}
-              className="p-4 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 touch-manipulation"
+              className="p-4 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 touch-manipulation shadow-sm"
             >
               ◀
             </button>
@@ -276,7 +277,7 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
               type="button"
               onClick={() => setStepIndex(prev => Math.min(steps.length - 1, prev + 1))} 
               disabled={stepIndex >= steps.length - 1}
-              className="p-4 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 touch-manipulation"
+              className="p-4 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 touch-manipulation shadow-sm"
             >
               ▶
             </button>
@@ -316,20 +317,49 @@ const App = () => {
 
   // Initialization
   useEffect(() => {
+    // Helper to generate auto steps if none exist
+    const generateAutoSteps = (q, explText) => {
+      const dNames = q.correctEntries.debit.map(d => d.accountName).join('、');
+      const cNames = q.correctEntries.credit.map(c => c.accountName).join('、');
+      const steps = [];
+      
+      // Step 1: Debit focus
+      steps.push({
+        comment: `まずは借方（左側）を考えます。\nこの取引では資産の増加や費用の発生として「${dNames}」を記入します。`,
+        highlight: dNames, // Try to highlight account name if present
+        debit: true
+      });
+      
+      // Step 2: Credit focus
+      steps.push({
+        comment: `次に貸方（右側）を考えます。\n対価として資産の減少や収益の発生で「${cNames}」を記入します。`,
+        highlight: cNames,
+        credit: true
+      });
+      
+      // Step 3: Summary
+      steps.push({
+        comment: `金額が一致していることを確認します。\n\n【解説】\n${explText}`,
+        highlight: "",
+        debit: true,
+        credit: true
+      });
+      
+      return steps;
+    };
+
     // Load Data
     const merged = RAW_QUESTIONS.map(q => {
       const expl = EXPLANATIONS[q.id];
-      // Generate some dummy steps if none exist, just for demo
-      const dummySteps = expl ? [
-        { comment: "まずは取引の要素を分解します。", highlight: "" },
-        { comment: "勘定科目を決定します。", highlight: "" },
-        { comment: "金額を計算し、借方・貸方に記入します。", highlight: "" }
-      ] : [];
+      const explText = expl ? expl.explanation : "解説準備中";
+      
+      // Use predefined steps if available, otherwise generate auto steps
+      const steps = (expl && expl.steps) ? expl.steps : generateAutoSteps(q, explText);
 
       return { 
         ...q, 
-        explanation: expl ? expl.explanation : "解説準備中", 
-        explanationSteps: q.explanationSteps || (expl ? expl.steps : dummySteps) 
+        explanation: explText, 
+        explanationSteps: steps 
       };
     });
     setQuestions(merged);
@@ -560,7 +590,8 @@ const App = () => {
             <button type="button" onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button>
             <h2 className="font-bold text-slate-700">アイテム図鑑</h2>
           </header>
-          <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 gap-3 max-w-4xl mx-auto w-full">
+          {/* Changed grid-cols for better responsiveness on PC */}
+          <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4 max-w-6xl mx-auto w-full">
             {COLLECTION_ITEMS.map(item => {
               const owned = isOwned(item.id);
               return (
