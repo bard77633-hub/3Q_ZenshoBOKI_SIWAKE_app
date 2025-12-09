@@ -196,8 +196,9 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。";
   
   // テキストハイライト処理
+  // 文字が太くなると幅が変わって視認性が悪くなるため、背景色のみ変更する
   const displayHtml = currentStep && currentStep.highlight
-    ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 font-bold px-1 rounded shadow-sm">${currentStep.highlight}</span>`)
+    ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm">${currentStep.highlight}</span>`)
     : q.text;
 
   // 借方・貸方のハイライト判定
@@ -319,27 +320,38 @@ const App = () => {
   useEffect(() => {
     // Helper to generate auto steps if none exist
     const generateAutoSteps = (q, explText) => {
-      const dNames = q.correctEntries.debit.map(d => d.accountName).join('、');
-      const cNames = q.correctEntries.credit.map(c => c.accountName).join('、');
       const steps = [];
       
-      // Step 1: Debit focus
+      // Step: Start
       steps.push({
-        comment: `まずは借方（左側）を考えます。\nこの取引では資産の増加や費用の発生として「${dNames}」を記入します。`,
-        highlight: dNames, // Try to highlight account name if present
-        debit: true
+        comment: "取引の内容を確認し、勘定科目を決定します。",
+        highlight: "",
+        debit: false, credit: false
+      });
+
+      // Debit entries (one by one)
+      q.correctEntries.debit.forEach((d) => {
+        steps.push({
+          comment: `借方（左側）に「${d.accountName}」を計上します。\n（資産の増加、費用の発生など）`,
+          highlight: d.accountName, // Try to highlight if text contains account name
+          debit: true,
+          debitKey: d.accountName
+        });
       });
       
-      // Step 2: Credit focus
-      steps.push({
-        comment: `次に貸方（右側）を考えます。\n対価として資産の減少や収益の発生で「${cNames}」を記入します。`,
-        highlight: cNames,
-        credit: true
+      // Credit entries (one by one)
+      q.correctEntries.credit.forEach((c) => {
+        steps.push({
+          comment: `貸方（右側）に「${c.accountName}」を計上します。\n（資産の減少、負債・純資産の増加、収益の発生など）`,
+          highlight: c.accountName,
+          credit: true,
+          creditKey: c.accountName
+        });
       });
       
-      // Step 3: Summary
+      // Step: Summary
       steps.push({
-        comment: `金額が一致していることを確認します。\n\n【解説】\n${explText}`,
+        comment: `最後に貸借の金額が一致していることを確認します。\n\n【解説】\n${explText}`,
         highlight: "",
         debit: true,
         credit: true
@@ -507,9 +519,8 @@ const App = () => {
     }
 
     if (scoreRate === 0) {
-       const ownedCommon = COLLECTION_ITEMS.filter(i => i.rarity === 1 && userStats.inventory.includes(i.id));
-       if (ownedCommon.length > 0) item = ownedCommon[Math.floor(Math.random() * ownedCommon.length)];
-       else item = COLLECTION_ITEMS.find(i => i.rarity === 1);
+       // 0点の場合は呼び出されない想定だが、念のため
+       return;
     }
 
     const isNew = !userStats.inventory.includes(item.id);
@@ -736,12 +747,38 @@ const App = () => {
 
   // --- Gacha Screens ---
   if (screen === 'gacha_open') {
+    const isZeroScore = sessionStats.correct === 0;
+    
     return (
-      <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-50 cursor-pointer" onClick={doGacha}>
-        <div className="text-white text-2xl font-bold mb-8 animate-fade-in-up">お疲れ様でした！</div>
-        <div className="text-white text-xl mb-12 animate-fade-in-up" style={{animationDelay: '0.1s'}}>正解数: <span className="font-mono text-4xl text-yellow-400 font-bold ml-2">{sessionStats.correct} / {currentSession.length}</span></div>
-        <div className="text-9xl animate-bounce-gentle">🎁</div>
-        <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6 backdrop-blur bg-white/10">タップして開封</div>
+      <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-50 cursor-default">
+        <div className="text-white text-2xl font-bold mb-8 animate-fade-in-up">
+          {isZeroScore ? "残念..." : "お疲れ様でした！"}
+        </div>
+        <div className="text-white text-xl mb-12 animate-fade-in-up" style={{animationDelay: '0.1s'}}>
+          正解数: <span className={`font-mono text-4xl font-bold ml-2 ${isZeroScore ? 'text-gray-400' : 'text-yellow-400'}`}>
+            {sessionStats.correct} / {currentSession.length}
+          </span>
+        </div>
+        
+        {isZeroScore ? (
+          <div className="animate-fade-in text-center" style={{animationDelay: '0.2s'}}>
+            <div className="text-6xl mb-6">😢</div>
+            <p className="text-white/70 text-sm mb-8">1問以上正解でアイテムゲットのチャンス！</p>
+            <button 
+              onClick={() => setScreen('home')}
+              className="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-full border border-white/30 transition-all active:scale-95"
+            >
+              トップへ戻る
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center cursor-pointer" onClick={doGacha}>
+            <div className="text-9xl animate-bounce-gentle">🎁</div>
+            <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6 backdrop-blur bg-white/10">
+              タップして開封
+            </div>
+          </div>
+        )}
       </div>
     );
   }
