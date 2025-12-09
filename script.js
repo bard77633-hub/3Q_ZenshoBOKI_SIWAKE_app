@@ -485,6 +485,14 @@ const App = () => {
   };
 
   const checkAnswer = () => {
+    // Validation: Check for empty items
+    const hasIncomplete = [...debitLines, ...creditLines].some(l => !l.accountName || l.amount <= 0);
+    if (hasIncomplete) {
+      if (!window.confirm("科目未選択または金額が0円の行があります。\nこのまま解答してよろしいですか？")) {
+        return;
+      }
+    }
+
     const q = currentSession[currentIndex];
     const dEntries = debitLines.filter(l => l.accountName && l.amount > 0).map(l => ({ n: l.accountName, a: l.amount }));
     const cEntries = creditLines.filter(l => l.accountName && l.amount > 0).map(l => ({ n: l.accountName, a: l.amount }));
