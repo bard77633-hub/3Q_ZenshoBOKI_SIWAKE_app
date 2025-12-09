@@ -1,3 +1,4 @@
+
 /* Existing Styles */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -87,24 +88,6 @@
   animation: bounceGentle 2s infinite ease-in-out;
 }
 
-/* Shake Hard for Opening */
-@keyframes shakeHard {
-  0% { transform: translate(1px, 1px) rotate(0deg); }
-  10% { transform: translate(-1px, -2px) rotate(-5deg); }
-  20% { transform: translate(-3px, 0px) rotate(5deg); }
-  30% { transform: translate(3px, 2px) rotate(0deg); }
-  40% { transform: translate(1px, -1px) rotate(5deg); }
-  50% { transform: translate(-1px, 2px) rotate(-5deg); }
-  60% { transform: translate(-3px, 1px) rotate(0deg); }
-  70% { transform: translate(3px, 1px) rotate(-5deg); }
-  80% { transform: translate(-1px, -1px) rotate(5deg); }
-  90% { transform: translate(1px, 2px) rotate(0deg); }
-  100% { transform: translate(1px, -2px) rotate(-5deg); }
-}
-.animate-shake-hard {
-  animation: shakeHard 0.5s cubic-bezier(.36,.07,.19,.97) both;
-}
-
 /* Pop In Animation for Gacha */
 @keyframes popIn {
   0% { transform: scale(0.5); opacity: 0; }
@@ -115,13 +98,51 @@
   animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Bounce Text */
-@keyframes bounceCustom {
-  0%, 100% { transform: translateY(0) rotate(-3deg); }
-  50% { transform: translateY(-20px) rotate(-3deg); }
+/* Sunburst Effect for Rarity */
+@keyframes spinSlow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
-.animate-bounce-custom {
-  animation: bounceCustom 1s infinite;
+
+.effect-sunburst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0) 10deg,
+    rgba(255, 255, 255, 0.1) 10deg,
+    rgba(255, 255, 255, 0.4) 20deg
+  );
+  animation: spinSlow 10s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Sparkle/Pulse for Rare */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+}
+
+/* God Ray for Super Rare */
+@keyframes godRays {
+  0% { opacity: 0.5; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) rotate(180deg) scale(1.2); }
+  100% { opacity: 0.5; transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+}
+.effect-godrays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(253, 224, 71, 0.2) 0%, rgba(253, 224, 71, 0) 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Unobtained Item */
@@ -144,7 +165,7 @@
 .rarity-rare {
   border-color: #60a5fa;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+  animation: pulseGlow 3s infinite;
 }
 .text-rare { color: #3b82f6; }
 .bg-rare-badge { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
@@ -153,8 +174,9 @@
 .rarity-super {
   border-color: #fbbf24;
   background: radial-gradient(circle at 50% 30%, #fefce8, #fde047);
-  box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+  box-shadow: 0 0 25px rgba(250, 204, 21, 0.6);
   position: relative;
+  overflow: hidden;
 }
 /* Holographic sheen for Super Rare */
 .rarity-super::after {
@@ -180,14 +202,3 @@
 }
 .text-super { color: #d97706; }
 .bg-super-badge { background-color: #fffbeb; color: #d97706; border-color: #fde68a; }
-
-/* --- Complete Theme (Gold) --- */
-.bg-complete {
-  background: linear-gradient(to bottom, #fffbeb, #fef3c7) !important;
-}
-.bg-complete .text-blue-800 {
-  color: #b45309 !important; /* Gold/Bronze text */
-}
-.bg-complete #app-title::after {
-  content: " 👑";
-}

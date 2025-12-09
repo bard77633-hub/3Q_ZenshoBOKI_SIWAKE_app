@@ -157,7 +157,7 @@ const ItemDetailModal = ({ item, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className={`w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl transform transition-transform duration-300 scale-100 border-4 ${borderColor}`} onClick={e => e.stopPropagation()}>
         <div className="relative p-6 flex flex-col items-center text-center">
           <button onClick={onClose} className="absolute top-3 right-3 text-slate-300 hover:text-slate-500 font-bold text-2xl leading-none">&times;</button>
@@ -319,9 +319,8 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   );
 };
 
-// 4. Review Modal (New)
+// 4. Review Modal
 const ReviewModal = ({ results, onClose }) => {
-  // 不正解を先に、正解を後に並び替え（安定ソートのためfilterして結合）
   const incorrects = results.filter(r => !r.isCorrect);
   const corrects = results.filter(r => r.isCorrect);
   const sortedResults = [...incorrects, ...corrects];
@@ -373,7 +372,40 @@ const ReviewModal = ({ results, onClose }) => {
   );
 };
 
-// 5. Main App Component
+// 5. Collection Screen Component
+const CollectionScreen = ({ setScreen, userStats }) => {
+  const isOwned = (id) => userStats.inventory.includes(id);
+  const [selected, setSelected] = useState(null);
+  
+  return (
+    <>
+      <div className="fixed inset-0 bg-slate-100 flex flex-col z-50">
+        <header className="bg-white shadow-sm px-4 py-3">
+          <button onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button>
+          <h2 className="font-bold text-slate-700">アイテム図鑑</h2>
+        </header>
+        <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4 max-w-6xl mx-auto w-full">
+          {COLLECTION_ITEMS.map(item => {
+            const owned = isOwned(item.id);
+            return (
+              <div 
+                key={item.id} 
+                onClick={() => { if(owned) setSelected(item); }} 
+                className={`aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm transition-transform active:scale-95 cursor-pointer select-none ${owned ? (item.rarity===3 ? 'border-yellow-300 bg-yellow-50' : item.rarity===2 ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white') : 'border-slate-200 bg-slate-100 grayscale opacity-50 cursor-default'}`}
+              >
+                <div className="text-4xl mb-2">{owned ? item.icon : '🔒'}</div>
+                <div className="text-xs font-bold text-slate-700 text-center leading-tight truncate w-full px-1">{owned ? item.name : `No.${item.id}`}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <ItemDetailModal item={selected} onClose={() => setSelected(null)} />
+    </>
+  );
+};
+
+// 6. Main App Component
 const App = () => {
   const [screen, setScreen] = useState('home'); // home, game, result, collection, explanation, gacha
   const [userStats, setUserStats] = useState({ correct: 0, total: 0, history: [], categoryScores: {}, inventory: [] });
@@ -398,9 +430,7 @@ const App = () => {
   // Gacha State
   const [gachaItem, setGachaItem] = useState(null);
   const [isNewItem, setIsNewItem] = useState(false);
-
-  // Collection State
-  const [selectedCollectionItem, setSelectedCollectionItem] = useState(null);
+  const [showGachaDetail, setShowGachaDetail] = useState(false); // For expanding gacha card details
 
   // Explanation State
   const [showExplanation, setShowExplanation] = useState(false);
@@ -551,21 +581,11 @@ const App = () => {
       if (sessionMode === 'sub') {
          const subId = currentSession[0].sub;
          if (subId) {
-             // currentCorrect: sessionStats.correct tracks state but React batching might delay. 
-             // However, nextQuestion is user triggered, so sessionStats is stable.
-             // Special check: If last question was correct, sessionStats might not have updated if we relied on render cycle?
-             // No, checkAnswer calls setSessionStats, nextQuestion is called later by user click. 
-             // So sessionStats is correct.
-             
-             const currentCorrect = sessionStats.correct + (lastResult.isCorrect && !sessionResults.some(r=>r.q.id===lastResult.q.id) ? 1 : 0);
-             // Logic check: sessionStats is updated in checkAnswer, so it already includes the last correct one.
-             // The only case it wouldn't is if we called nextQuestion automatically, but we don't.
-             
              const finalCorrect = sessionStats.correct;
              const finalTotal = currentSession.length;
              
              setUserStats(prev => {
-                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 }; // Default total 1 to avoid /0
+                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 };
                  const prevRate = (prev.categoryScores[subId] ? prevScore.correct / prevScore.total : -1);
                  const currentRate = finalCorrect / finalTotal;
 
@@ -621,7 +641,6 @@ const App = () => {
   };
 
   // --- Rendering ---
-  // (Main structure same as before, updating Gacha screens below)
 
   if (screen === 'home') {
     return (
@@ -684,12 +703,9 @@ const App = () => {
     );
   }
 
-  // collection, game screens same as previous. Skipping to Gacha parts.
-  if (screen === 'collection') return <App.Collection screen={screen} setScreen={setScreen} userStats={userStats} />;
+  if (screen === 'collection') return <CollectionScreen setScreen={setScreen} userStats={userStats} />;
   
   if (screen === 'game') {
-    // ... (Same as previous content, just verifying ExplanationOverlay usage)
-    // Inline implementation for brevity in this response, using the updated ExplanationOverlay
     const q = currentSession[currentIndex];
     return (
       <div className="flex flex-col min-h-screen">
@@ -698,7 +714,7 @@ const App = () => {
           <div className="text-sm font-medium bg-slate-100 px-3 py-1 rounded-full">{currentIndex + 1} / {currentSession.length}</div>
         </header>
         <main className="flex-grow p-4 pb-32 overflow-y-auto max-w-4xl mx-auto w-full space-y-6">
-          {/* Question, Choices, Journal Table ... (Same as existing) */}
+          {/* Question, Choices, Journal Table ... */}
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
             <div className="flex justify-between mb-3"><span className="bg-slate-800 text-white text-xs px-2 py-1 rounded font-mono">Q.{currentIndex + 1}</span></div>
             <p className="text-lg font-medium text-slate-800 leading-relaxed">{q.text}</p>
@@ -805,24 +821,64 @@ const App = () => {
   }
 
   if (screen === 'gacha_result' && gachaItem) {
+    const isRare = gachaItem.rarity === 2;
+    const isSuperRare = gachaItem.rarity === 3;
+
     return (
-      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl">
+      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in overflow-hidden">
+        {/* Special Background Effects */}
+        {isSuperRare && (
+          <>
+            <div className="effect-sunburst"></div>
+            <div className="effect-godrays"></div>
+          </>
+        )}
+        
+        <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl z-10">
           <div className="absolute inset-0 bg-gradient-to-tr from-slate-100 to-slate-200 -z-10"></div>
           <div className="text-xs font-black text-slate-400 mb-4 tracking-[0.3em]">GET ITEM!</div>
-          <div className={`w-48 h-64 mx-auto rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative ${gachaItem.rarity===3?'border-yellow-400':gachaItem.rarity===2?'border-blue-400':'border-slate-300'}`}>
-             {isNewItem && <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow animate-bounce">NEW</div>}
-             <div className="text-7xl mb-2 drop-shadow-md">{gachaItem.icon}</div>
-             <div className="font-bold text-slate-700 text-lg px-2">{gachaItem.name}</div>
+          
+          {/* Card Container with onClick for Detail View */}
+          <div 
+            onClick={() => setShowGachaDetail(true)}
+            className={`w-48 h-64 mx-auto rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative cursor-pointer active:scale-95 transition-transform duration-200 ${gachaItem.rarity===3?'border-yellow-400 rarity-super':gachaItem.rarity===2?'border-blue-400 rarity-rare':'border-slate-300'}`}
+          >
+             {isNewItem && <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow animate-bounce z-20">NEW</div>}
+             <div className="text-7xl mb-2 drop-shadow-md z-10">{gachaItem.icon}</div>
+             <div className="font-bold text-slate-700 text-lg px-2 z-10">{gachaItem.name}</div>
+             <div className="absolute bottom-2 text-[10px] text-slate-400 font-bold z-10">TAP TO READ ▶</div>
           </div>
-          <div className="text-2xl font-black text-slate-400 mb-2">{gachaItem.rarity===3?'SUPER RARE':gachaItem.rarity===2?'RARE':'COMMON'}</div>
-          <p className="text-slate-500 text-xs mb-6 h-8 leading-tight overflow-hidden">{gachaItem.desc.substring(0, 40)}...</p>
+
+          <div className={`text-2xl font-black mb-2 ${isSuperRare ? 'text-super animate-pulse' : isRare ? 'text-rare' : 'text-slate-400'}`}>
+            {isSuperRare ? 'SUPER RARE' : isRare ? 'RARE' : 'COMMON'}
+          </div>
+          
+          <p className="text-slate-500 text-xs mb-6 h-8 leading-tight overflow-hidden px-2">
+            {gachaItem.desc.substring(0, 40)}...
+          </p>
           
           <div className="space-y-3">
-             <button type="button" onClick={() => setScreen('home')} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform">トップへ戻る</button>
+             <button 
+               type="button" 
+               onClick={() => {
+                 setSessionResults([]); // Reset game state
+                 setScreen('home');
+               }} 
+               className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"
+             >
+               トップへ戻る
+             </button>
              <button type="button" onClick={() => setShowReview(true)} className="w-full bg-slate-200 text-slate-600 font-bold py-3 rounded-xl shadow-sm active:scale-95 transition-transform text-sm">📝 問題の振り返り</button>
           </div>
         </div>
+
+        {/* Detail Modal for full text */}
+        {showGachaDetail && (
+          <ItemDetailModal 
+            item={gachaItem} 
+            onClose={() => setShowGachaDetail(false)} 
+          />
+        )}
 
         {showReview && (
           <ReviewModal 
@@ -833,32 +889,6 @@ const App = () => {
       </div>
     );
   }
-
-  // Necessary wrapper to make collection screen work in this condensed version
-  App.Collection = ({screen, setScreen, userStats}) => {
-     // ... (Same implementation as before)
-     const isOwned = (id) => userStats.inventory.includes(id);
-     const [selected, setSelected] = useState(null);
-     return (
-       <>
-         <div className="fixed inset-0 bg-slate-100 flex flex-col z-50">
-           <header className="bg-white shadow-sm px-4 py-3"><button onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button><h2 className="font-bold text-slate-700">アイテム図鑑</h2></header>
-           <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4 max-w-6xl mx-auto w-full">
-             {COLLECTION_ITEMS.map(item => {
-               const owned = isOwned(item.id);
-               return (
-                 <div key={item.id} onClick={() => { if(owned) setSelected(item); }} className={`aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm transition-transform active:scale-95 cursor-pointer select-none ${owned ? (item.rarity===3 ? 'border-yellow-300 bg-yellow-50' : item.rarity===2 ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white') : 'border-slate-200 bg-slate-100 grayscale opacity-50 cursor-default'}`}>
-                   <div className="text-4xl mb-2">{owned ? item.icon : '🔒'}</div>
-                   <div className="text-xs font-bold text-slate-700 text-center leading-tight truncate w-full px-1">{owned ? item.name : `No.${item.id}`}</div>
-                 </div>
-               );
-             })}
-           </div>
-         </div>
-         <ItemDetailModal item={selected} onClose={() => setSelected(null)} />
-       </>
-     );
-  };
 
   return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading...</div>;
 };
