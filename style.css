@@ -62,6 +62,20 @@
   border-color: #3b82f6 !important;
 }
 
+/* Calculator Styles */
+.calc-op-btn {
+  background-color: #ffedd5; /* orange-100 */
+  color: #c2410c; /* orange-700 */
+  font-weight: bold;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #fed7aa; /* orange-200 */
+  transition: background-color 0.1s;
+}
+.calc-op-btn:active {
+  background-color: #fdba74; /* orange-300 */
+}
+
 /* --- Gacha Animations --- */
 
 /* Gentle Bounce for Idle Box */

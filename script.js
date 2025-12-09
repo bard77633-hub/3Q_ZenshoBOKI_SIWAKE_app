@@ -51,7 +51,13 @@ const state = {
   selectedChoice: null,
   sessionStats: { correct: 0, total: 0 },
   currentMode: null, 
-  currentGenreId: null
+  currentGenreId: null,
+  // Calculator State
+  calc: {
+    operand: null,
+    operator: null,
+    active: false
+  }
 };
 
 const explanationState = {
@@ -132,11 +138,22 @@ function initApp() {
   setupKeypad();
   document.getElementById('keypad-close').addEventListener('click', closeKeypad);
   document.getElementById('key-enter').addEventListener('click', confirmAmount);
-  document.getElementById('key-clear').addEventListener('click', () => updateKeypadDisplay("0"));
+  document.getElementById('key-clear').addEventListener('click', () => {
+    state.calc.operand = null;
+    state.calc.operator = null;
+    updateKeypadDisplay("0");
+  });
   document.getElementById('key-backspace').addEventListener('click', () => {
     const current = state.tempAmount;
     updateKeypadDisplay(current.length > 1 ? current.slice(0, -1) : "0");
   });
+  
+  // Calculator Event Listeners
+  document.getElementById('toggle-calc-btn').addEventListener('click', toggleCalculator);
+  document.querySelectorAll('.calc-op-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleCalcOperator(btn.getAttribute('data-op')));
+  });
+  document.getElementById('calc-eq-btn').addEventListener('click', handleCalcEqual);
 }
 
 // --- Menu Rendering ---
@@ -471,7 +488,7 @@ function addLine(side) { const newLine = { id: generateId(), accountName: null, 
 function removeLine(id, side) { if (side === 'debit') state.debitLines = state.debitLines.filter(l => l.id !== id); else state.creditLines = state.creditLines.filter(l => l.id !== id); renderLines(); }
 function resetCurrentQuestion() { loadQuestion(); }
 
-// Keypad
+// Keypad & Calculator
 function setupKeypad() {
   const container = document.querySelector('#keypad-content .grid-cols-3');
   if (!container) return;
@@ -481,17 +498,33 @@ function setupKeypad() {
     const btn = document.createElement('button');
     btn.textContent = k;
     btn.className = "bg-white text-slate-700 font-semibold text-2xl py-3 active:bg-slate-200 transition-colors touch-manipulation";
-    btn.onclick = () => { let val = state.tempAmount; if (val === '0') val = k; else val += k; updateKeypadDisplay(val); };
+    btn.onclick = () => { 
+      // If we just finished a calculation (equals pressed), start fresh
+      if(state.calc.justCalculated) {
+        updateKeypadDisplay(k);
+        state.calc.justCalculated = false;
+        return;
+      }
+      let val = state.tempAmount; 
+      if (val === '0') val = k; else val += k; 
+      updateKeypadDisplay(val); 
+    };
     container.appendChild(btn);
   });
 }
+
 function openKeypad(id, side) {
   state.editingId = { id, side };
   const list = side === 'debit' ? state.debitLines : state.creditLines;
   const line = list.find(l => l.id === id);
   if (line) {
     state.tempAmount = line.amount === 0 ? "0" : line.amount.toString();
+    // Reset Calculator State
+    state.calc.operand = null;
+    state.calc.operator = null;
+    state.calc.justCalculated = false;
     updateKeypadDisplay(state.tempAmount);
+    
     const backdrop = document.getElementById('keypad-backdrop');
     const wrapper = document.getElementById('keypad-wrapper');
     const content = document.getElementById('keypad-content');
@@ -500,6 +533,7 @@ function openKeypad(id, side) {
     document.getElementById('question-container').classList.add('question-highlight');
   }
 }
+
 function closeKeypad() {
   const backdrop = document.getElementById('keypad-backdrop');
   const wrapper = document.getElementById('keypad-wrapper');
@@ -508,6 +542,7 @@ function closeKeypad() {
   document.getElementById('question-container').classList.remove('question-highlight');
   setTimeout(() => { backdrop.classList.add('hidden'); wrapper.classList.add('hidden'); state.editingId = null; }, 200);
 }
+
 function updateKeypadDisplay(val) {
   if (val.length > 1 && val.startsWith('0')) val = val.substring(1);
   if (val.length > 10) return;
@@ -515,6 +550,7 @@ function updateKeypadDisplay(val) {
   const disp = document.getElementById('keypad-display');
   if (disp) disp.textContent = parseInt(val || '0').toLocaleString();
 }
+
 function confirmAmount() {
   if (!state.editingId) return;
   const { id, side } = state.editingId;
@@ -522,6 +558,46 @@ function confirmAmount() {
   const line = list.find(l => l.id === id);
   if (line) { line.amount = parseInt(state.tempAmount) || 0; renderLines(); }
   closeKeypad();
+}
+
+// Calculator Logic
+function toggleCalculator() {
+  const area = document.getElementById('calc-area');
+  area.classList.toggle('hidden');
+}
+
+function handleCalcOperator(op) {
+  // Store current value and operator
+  state.calc.operand = parseInt(state.tempAmount);
+  state.calc.operator = op;
+  // Flash effect on display or clear it?
+  // Let's clear visual but keep state
+  updateKeypadDisplay("0");
+}
+
+function handleCalcEqual() {
+  if (state.calc.operand === null || state.calc.operator === null) return;
+  
+  const current = parseInt(state.tempAmount);
+  let result = 0;
+  
+  switch(state.calc.operator) {
+    case '+': result = state.calc.operand + current; break;
+    case '-': result = state.calc.operand - current; break;
+    case '*': result = state.calc.operand * current; break;
+    case '/': 
+      if(current === 0) result = 0; 
+      else result = Math.floor(state.calc.operand / current); // Floor division for bookkeeping safety
+      break;
+  }
+  
+  // Update Display
+  updateKeypadDisplay(result.toString());
+  
+  // Reset Op but mark as calculated
+  state.calc.operand = null;
+  state.calc.operator = null;
+  state.calc.justCalculated = true;
 }
 
 // Check Answer
@@ -541,7 +617,36 @@ function checkAnswer() {
   const c1 = userCredit.map(mapper).sort(sorter);
   const d2 = q.correctEntries.debit.map(mapper).sort(sorter);
   const c2 = q.correctEntries.credit.map(mapper).sort(sorter);
-  const isCorrect = JSON.stringify(d1) === JSON.stringify(d2) && JSON.stringify(c1) === JSON.stringify(c2);
+  
+  // Check for aliases (e.g. 売掛金 vs クレジット売掛金)
+  const normalize = (entries, aliases) => {
+      if(!aliases) return entries;
+      return entries.map(e => {
+          let name = e.n;
+          // Check debit aliases
+          if (aliases.debit) {
+             aliases.debit.forEach(a => {
+                 const key = Object.keys(a)[0];
+                 if(a[key].includes(name)) name = key;
+             });
+          }
+          // Check credit aliases
+          if (aliases.credit) {
+             aliases.credit.forEach(a => {
+                 const key = Object.keys(a)[0];
+                 if(a[key].includes(name)) name = key;
+             });
+          }
+          return { n: name, a: e.a };
+      }).sort(sorter);
+  };
+
+  const d1Norm = normalize(d1, q.aliases);
+  const c1Norm = normalize(c1, q.aliases);
+  // d2 is correct answer, already normalized structure
+  
+  const isCorrect = JSON.stringify(d1Norm) === JSON.stringify(d2) && JSON.stringify(c1Norm) === JSON.stringify(c2);
+  
   if (isCorrect) { userStats.correct++; state.sessionStats.correct++; }
   userStats.total++;
   userStats.history.push({ qId: q.id, res: isCorrect, date: Date.now() });

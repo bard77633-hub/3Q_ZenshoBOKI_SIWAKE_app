@@ -220,9 +220,27 @@
     <div id="keypad-wrapper" class="fixed inset-0 z-50 hidden flex items-end justify-center pointer-events-none">
       <div id="keypad-content" class="bg-white rounded-t-2xl shadow-2xl w-full max-w-xs overflow-hidden transform translate-y-full transition-transform duration-200 pointer-events-auto">
         <div class="bg-slate-50 p-3 border-b flex justify-between items-center">
-          <h3 class="font-bold text-slate-700 text-sm">金額を入力</h3>
+          <div class="flex items-center gap-2">
+            <h3 class="font-bold text-slate-700 text-sm">金額を入力</h3>
+            <!-- Calculator Toggle -->
+            <button id="toggle-calc-btn" class="text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold border border-orange-200 hover:bg-orange-200">
+              電卓ツール 🧮
+            </button>
+          </div>
           <button id="keypad-close" class="text-slate-400 hover:text-slate-700 font-bold p-1 px-3 bg-slate-200 rounded-full text-xs">閉じる</button>
         </div>
+        
+        <!-- Collapsible Calculator Area -->
+        <div id="calc-area" class="hidden bg-orange-50 border-b border-orange-100 transition-all">
+           <div class="grid grid-cols-4 gap-1 p-2">
+             <button class="calc-op-btn" data-op="+">＋</button>
+             <button class="calc-op-btn" data-op="-">−</button>
+             <button class="calc-op-btn" data-op="*">×</button>
+             <button class="calc-op-btn" data-op="/">÷</button>
+             <button id="calc-eq-btn" class="col-span-4 bg-orange-200 text-orange-800 font-bold py-2 rounded mt-1 active:bg-orange-300">=</button>
+           </div>
+        </div>
+
         <div class="p-4 bg-white border-b border-blue-100 text-right">
           <span id="keypad-display" class="text-3xl font-mono font-bold text-slate-800 tracking-wider">0</span>
           <span class="text-sm text-slate-400 ml-1">円</span>
