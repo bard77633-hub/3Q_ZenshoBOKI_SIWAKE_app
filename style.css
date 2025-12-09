@@ -62,41 +62,33 @@
   border-color: #3b82f6 !important;
 }
 
-/* --- New Game Animations --- */
+/* --- Gacha Animations --- */
 
-/* Batter Swing */
-.swing-anim {
-  animation: swing 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+/* Gentle Bounce for Idle Box */
+@keyframes bounceGentle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.05); }
 }
-@keyframes swing {
-  0% { transform: rotate(0deg); }
-  40% { transform: rotate(-30deg) scale(0.9); }
-  100% { transform: rotate(60deg) scale(1.1); }
-}
-
-/* Ball Fly Animation */
-/* Start position must match the "hit" point relative to container */
-.ball-fly {
-  display: block !important;
-  animation: flyParabola 2s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+.animate-bounce-gentle {
+  animation: bounceGentle 2s infinite ease-in-out;
 }
 
-@keyframes flyParabola {
-  0% { 
-    bottom: 25%; /* Near batter's bat height */
-    left: 20%; 
-    transform: scale(1) translateX(0) translateY(0); 
-  }
-  20% {
-    bottom: 60%;
-    left: 40%;
-    transform: scale(1.8);
-  }
-  100% { 
-    bottom: 120%; /* Fly off top right */
-    left: 150%; 
-    transform: scale(0.5); 
-  }
+/* Shake Hard for Opening */
+@keyframes shakeHard {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-5deg); }
+  20% { transform: translate(-3px, 0px) rotate(5deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(5deg); }
+  50% { transform: translate(-1px, 2px) rotate(-5deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-5deg); }
+  80% { transform: translate(-1px, -1px) rotate(5deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-5deg); }
+}
+.animate-shake-hard {
+  animation: shakeHard 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
 /* Pop In Animation for Gacha */
