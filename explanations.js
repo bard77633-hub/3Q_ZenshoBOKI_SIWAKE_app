@@ -2,9 +2,10 @@
 /**
  * Zensho Bookkeeping Grade 3 Practice App
  * Explanation Definitions
+ * React 19 Migration: ES Module Format
  */
 
-const EXPLANATIONS = {
+export const EXPLANATIONS = {
   // Cash & Savings
   'cs_01': { explanation: "開業資金は「資本金」として処理します。" },
   'cs_01b': { explanation: "送金小切手は通貨代用証券として「現金」で処理します。" },

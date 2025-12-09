@@ -2,9 +2,12 @@
 /**
  * Zensho Bookkeeping Grade 3 Practice App
  * Question Definitions - Complete Version v2.1
+ * React 19 Migration: ES Module Format
  */
 
-const RAW_QUESTIONS = [
+import { Randomizer } from './data.js';
+
+export const RAW_QUESTIONS = [
   // --- 1. CASH & SAVINGS ---
   {
     id: 'cs_01', major: 'cash_savings', sub: 'cash_basic',

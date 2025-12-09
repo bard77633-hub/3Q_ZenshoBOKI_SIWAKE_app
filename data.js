@@ -2,10 +2,11 @@
 /**
  * Zensho Bookkeeping Grade 3 Practice App
  * Data Module - Common Data & Helpers
+ * React 19 Migration: ES Module Format
  */
 
 // --- Helpers for Randomization ---
-const Randomizer = {
+export const Randomizer = {
   round: (num, precision = 1000) => Math.round(num / precision) * precision,
   getAmount: (base, variation = 0.2, precision = 1000) => {
     const min = base * (1 - variation);
@@ -18,7 +19,7 @@ const Randomizer = {
 };
 
 // --- Collection Data (30 Items) ---
-const COLLECTION_ITEMS = [
+export const COLLECTION_ITEMS = [
   // Common (15)
   { 
     id: 1, name: "現金", rarity: 1, icon: "💰", 
@@ -147,7 +148,7 @@ const COLLECTION_ITEMS = [
 ];
 
 // --- Genre Configuration ---
-const GENRE_STRUCTURE = [
+export const GENRE_STRUCTURE = [
   {
     id: 'cash_savings',
     title: '💰 現金・預金',
@@ -163,7 +164,7 @@ const GENRE_STRUCTURE = [
     title: '📦 商品売買',
     subs: [
       { id: 'trade_basic', title: '仕入・売上' },
-      { id: 'returns_discounts', title: '返品・値引' }, // Renamed
+      { id: 'returns_discounts', title: '返品・値引' }, 
       { id: 'advance', title: '前払金・前受金' },
       { id: 'shipping', title: '諸掛り' },
       { id: 'other_pay', title: 'クレジット・商品券' }
@@ -174,7 +175,7 @@ const GENRE_STRUCTURE = [
     title: '💴 手形・貸借',
     subs: [
       { id: 'notes_trade', title: '約束手形(売買)' },
-      { id: 'notes_transfer', title: '裏書・割引' }, // New
+      { id: 'notes_transfer', title: '裏書・割引' },
       { id: 'loan_notes', title: '貸付・借入' }
     ]
   },
