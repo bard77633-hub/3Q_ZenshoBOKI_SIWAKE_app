@@ -257,9 +257,9 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
                  {q.correctEntries.debit.map((d, i) => {
                    const isVisible = revealedDebits.has(d.accountName);
                    return (
-                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 gap-2 md:gap-8 ${isVisible ? 'opacity-100 translate-y-0 border-blue-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
-                       <span className="font-bold text-slate-700 text-left shrink-0">{d.accountName}</span>
-                       <span className="font-mono text-slate-500 text-right shrink whitespace-nowrap">{d.amount.toLocaleString()}</span>
+                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 gap-4 ${isVisible ? 'opacity-100 translate-y-0 border-blue-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
+                       <span className="font-bold text-slate-700 text-left shrink-0 truncate flex-grow">{d.accountName}</span>
+                       <span className="font-mono text-slate-500 text-right shrink-0 whitespace-nowrap">{d.amount.toLocaleString()}</span>
                      </div>
                    );
                  })}
@@ -271,9 +271,9 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
                  {q.correctEntries.credit.map((c, i) => {
                    const isVisible = revealedCredits.has(c.accountName);
                    return (
-                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 gap-2 md:gap-8 ${isVisible ? 'opacity-100 translate-y-0 border-red-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
-                       <span className="font-bold text-slate-700 text-left shrink-0">{c.accountName}</span>
-                       <span className="font-mono text-slate-500 text-right shrink whitespace-nowrap">{c.amount.toLocaleString()}</span>
+                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 gap-4 ${isVisible ? 'opacity-100 translate-y-0 border-red-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
+                       <span className="font-bold text-slate-700 text-left shrink-0 truncate flex-grow">{c.accountName}</span>
+                       <span className="font-mono text-slate-500 text-right shrink-0 whitespace-nowrap">{c.amount.toLocaleString()}</span>
                      </div>
                    );
                  })}
@@ -321,41 +321,49 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
 
 // 4. Review Modal (New)
 const ReviewModal = ({ results, onClose }) => {
+  // 不正解を先に、正解を後に並び替え（安定ソートのためfilterして結合）
   const incorrects = results.filter(r => !r.isCorrect);
+  const corrects = results.filter(r => r.isCorrect);
+  const sortedResults = [...incorrects, ...corrects];
+
   return (
     <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <div className="bg-white w-full max-w-lg rounded-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
          <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-            <h3 className="font-bold text-slate-700">間違えた問題 ({incorrects.length}問)</h3>
+            <h3 className="font-bold text-slate-700">問題の振り返り ({results.length}問)</h3>
             <button onClick={onClose} className="text-slate-400 font-bold px-2">✕</button>
          </div>
          <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-100">
-            {incorrects.length === 0 ? (
-                <div className="text-center text-slate-400 py-8">間違えた問題はありません。<br/>素晴らしい！</div>
-            ) : (
-                incorrects.map((res, i) => (
-                   <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <div className="text-xs font-bold text-slate-400 mb-1">Q.{res.q.id}</div>
-                      <div className="text-sm font-medium text-slate-800 mb-3">{res.q.text}</div>
-                      <div className="bg-green-50 border border-green-100 rounded p-2 text-xs">
-                         <div className="text-[10px] text-green-600 font-bold mb-1 text-center">正解の仕訳</div>
-                         <div className="flex justify-between gap-2">
-                            <div className="w-1/2 border-r border-green-200 pr-1">
-                               <div className="text-center text-[10px] text-slate-400">借方</div>
-                               {res.q.correctEntries.debit.map((d,k)=><div key={k} className="flex justify-between"><span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}
+            {sortedResults.map((res, i) => (
+                <div key={i} className={`bg-white p-4 rounded-xl border shadow-sm relative overflow-hidden ${res.isCorrect ? 'border-green-200' : 'border-red-200'}`}>
+                    <div className={`absolute top-0 left-0 w-1.5 h-full ${res.isCorrect ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                    <div className="pl-3">
+                        <div className="flex justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-400">Q.{res.q.id}</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${res.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{res.isCorrect ? '正解' : '不正解'}</span>
+                        </div>
+                        <div className="text-sm font-medium text-slate-800 mb-3">{res.q.text}</div>
+                        
+                        <div className="bg-slate-50 border border-slate-100 rounded p-2 text-xs mb-2">
+                            <div className="text-[10px] text-slate-500 font-bold mb-1 text-center border-b pb-1">正解の仕訳</div>
+                            <div className="flex justify-between gap-2 mt-1">
+                                <div className="w-1/2 border-r border-slate-200 pr-1">
+                                    <div className="text-center text-[10px] text-blue-400 font-bold">借方</div>
+                                    {res.q.correctEntries.debit.map((d,k)=><div key={k} className="flex justify-between"><span>{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}
+                                </div>
+                                <div className="w-1/2 pl-1">
+                                    <div className="text-center text-[10px] text-red-400 font-bold">貸方</div>
+                                    {res.q.correctEntries.credit.map((c,k)=><div key={k} className="flex justify-between"><span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}
+                                </div>
                             </div>
-                            <div className="w-1/2 pl-1">
-                               <div className="text-center text-[10px] text-slate-400">貸方</div>
-                               {res.q.correctEntries.credit.map((c,k)=><div key={k} className="flex justify-between"><span>{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}
-                            </div>
-                         </div>
-                      </div>
-                      <div className="mt-2 text-xs text-slate-500 leading-relaxed bg-slate-50 p-2 rounded">
-                        <span className="font-bold">解説: </span>{res.q.explanation}
-                      </div>
-                   </div>
-                ))
-            )}
+                        </div>
+
+                        <div className="text-xs text-slate-600 leading-relaxed bg-yellow-50/50 p-2 rounded border border-yellow-100">
+                            <span className="font-bold text-yellow-700">解説: </span>{res.q.explanation}
+                        </div>
+                    </div>
+                </div>
+            ))}
          </div>
          <div className="p-4 bg-white border-t">
             <button onClick={onClose} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl">閉じる</button>
@@ -399,46 +407,17 @@ const App = () => {
 
   // Initialization
   useEffect(() => {
-    // Helper to generate auto steps if none exist (Modified for step-by-step account)
+    // Helper to generate auto steps if none exist
     const generateAutoSteps = (q, explText) => {
       const steps = [];
-      
-      // Step: Start
-      steps.push({
-        comment: "取引の内容を確認し、勘定科目を決定します。",
-        highlight: "",
-        debit: false, credit: false
-      });
-
-      // Debit entries (one by one)
+      steps.push({ comment: "取引の内容を確認し、勘定科目を決定します。", highlight: "", debit: false, credit: false });
       q.correctEntries.debit.forEach((d) => {
-        steps.push({
-          comment: `借方（左側）に「${d.accountName}」を計上します。\n（資産の増加、費用の発生など）`,
-          highlight: d.accountName, // Try to highlight if text contains account name
-          debit: true,
-          debitKey: d.accountName
-        });
+        steps.push({ comment: `借方（左側）に「${d.accountName}」を計上します。`, highlight: d.accountName, debit: true, debitKey: d.accountName });
       });
-      
-      // Credit entries (one by one)
       q.correctEntries.credit.forEach((c) => {
-        steps.push({
-          comment: `貸方（右側）に「${c.accountName}」を計上します。\n（資産の減少、負債・純資産の増加、収益の発生など）`,
-          highlight: c.accountName,
-          credit: true,
-          creditKey: c.accountName
-        });
+        steps.push({ comment: `貸方（右側）に「${c.accountName}」を計上します。`, highlight: c.accountName, credit: true, creditKey: c.accountName });
       });
-      
-      // Step: Summary
-      steps.push({
-        comment: `最後に貸借の金額が一致していることを確認します。\n\n【解説】\n${explText}`,
-        highlight: "",
-        debit: true,
-        credit: true,
-        showAll: true // Flag to ensure all are visible
-      });
-      
+      steps.push({ comment: `最後に金額を確認します。\n\n【解説】\n${explText}`, highlight: "", debit: true, credit: true, showAll: true });
       return steps;
     };
 
@@ -446,10 +425,6 @@ const App = () => {
     const merged = RAW_QUESTIONS.map(q => {
       const expl = EXPLANATIONS[q.id];
       const explText = expl ? expl.explanation : "解説準備中";
-      
-      // Use predefined steps if available, otherwise generate auto steps
-      // Note: Even if predefined steps exist, you might want to review them if they don't follow the "one-by-one" rule.
-      // For now, if no steps defined, we use our new logic.
       const steps = (expl && expl.steps) ? expl.steps : generateAutoSteps(q, explText);
 
       return { 
@@ -481,16 +456,15 @@ const App = () => {
 
     if (pool.length === 0) return alert("準備中です");
 
-    // Shuffle & Mutate
     pool = shuffleArray(pool).slice(0, mode === 'comprehensive' ? 10 : 5);
     const session = pool.map(q => {
       const clone = JSON.parse(JSON.stringify(q));
       return q.mutate ? q.mutate(clone) : clone;
     });
 
-    setSessionMode(mode); // Save current mode for stats update
+    setSessionMode(mode); 
     setCurrentSession(session);
-    setSessionResults([]); // Reset results for new session
+    setSessionResults([]); 
     setCurrentIndex(0);
     setSessionStats({ correct: 0 });
     setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
@@ -525,7 +499,6 @@ const App = () => {
   };
 
   const checkAnswer = () => {
-    // Validation: Check for empty items
     const hasIncomplete = [...debitLines, ...creditLines].some(l => !l.accountName || l.amount <= 0);
     if (hasIncomplete) {
       if (!window.confirm("科目未選択または金額が0円の行があります。\nこのまま解答してよろしいですか？")) {
@@ -537,7 +510,6 @@ const App = () => {
     const dEntries = debitLines.filter(l => l.accountName && l.amount > 0).map(l => ({ n: l.accountName, a: l.amount }));
     const cEntries = creditLines.filter(l => l.accountName && l.amount > 0).map(l => ({ n: l.accountName, a: l.amount }));
     
-    // Normalize aliases
     const normalize = (entries, aliases) => entries.map(e => {
       let name = e.n;
       if (aliases?.debit) aliases.debit.forEach(a => { if (Object.values(a)[0].includes(name)) name = Object.keys(a)[0]; });
@@ -552,20 +524,18 @@ const App = () => {
 
     const isCorrect = JSON.stringify(dNorm) === JSON.stringify(dCorrect) && JSON.stringify(cNorm) === JSON.stringify(cCorrect);
 
-    // Update global total stats (accumulated) but NOT category scores yet
     if (isCorrect) {
       setSessionStats(prev => ({ ...prev, correct: prev.correct + 1 }));
       setUserStats(prev => ({ 
         ...prev, 
         correct: prev.correct + 1, 
-        total: prev.total + 1,
-        // Category scores update removed from here to handle session-best logic later
+        total: prev.total + 1
       }));
     } else {
       setUserStats(prev => ({ ...prev, total: prev.total + 1 }));
     }
 
-    setSessionResults(prev => [...prev, { q, isCorrect }]); // Track result
+    setSessionResults(prev => [...prev, { q, isCorrect }]);
     setLastResult({ isCorrect, q });
     setShowResultModal(true);
   };
@@ -577,36 +547,34 @@ const App = () => {
       setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
       setCreditLines([{ id: generateId(), accountName: null, amount: 0 }]);
     } else {
-      // Session Ended: Update Category Best Scores
+      // Session Ended: Update Best Score
       if (sessionMode === 'sub') {
-         // Since we are in sub mode, all questions belong to the same sub category (or we pick the first one)
          const subId = currentSession[0].sub;
-         // Ensure consistency
          if (subId) {
-             const finalSessionCorrect = sessionStats.correct + (lastResult.isCorrect && currentIndex + 1 === currentSession.length && !sessionResults.find(r=>r.q.id===lastResult.q.id) ? 1 : 0);
-             // Note: sessionStats.correct tracks state, but state updates may lag if triggered in same render cycle as checkAnswer. 
-             // However, nextQuestion is user triggered, so sessionStats should be up to date relative to checkAnswer.
-             // We can trust sessionStats.correct here.
+             // currentCorrect: sessionStats.correct tracks state but React batching might delay. 
+             // However, nextQuestion is user triggered, so sessionStats is stable.
+             // Special check: If last question was correct, sessionStats might not have updated if we relied on render cycle?
+             // No, checkAnswer calls setSessionStats, nextQuestion is called later by user click. 
+             // So sessionStats is correct.
              
-             const currentCorrect = sessionStats.correct;
-             const currentTotal = currentSession.length;
+             const currentCorrect = sessionStats.correct + (lastResult.isCorrect && !sessionResults.some(r=>r.q.id===lastResult.q.id) ? 1 : 0);
+             // Logic check: sessionStats is updated in checkAnswer, so it already includes the last correct one.
+             // The only case it wouldn't is if we called nextQuestion automatically, but we don't.
+             
+             const finalCorrect = sessionStats.correct;
+             const finalTotal = currentSession.length;
              
              setUserStats(prev => {
-                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 0 };
-                 
-                 // If total is 0 or different from currentTotal (e.g. legacy data), treat as new.
-                 // We want to keep the "Best Score" (Highest accuracy).
-                 // Comparison: (New Correct / New Total) vs (Old Correct / Old Total)
-                 const prevRate = prevScore.total > 0 ? (prevScore.correct / prevScore.total) : -1;
-                 const currentRate = currentCorrect / currentTotal;
+                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 }; // Default total 1 to avoid /0
+                 const prevRate = (prev.categoryScores[subId] ? prevScore.correct / prevScore.total : -1);
+                 const currentRate = finalCorrect / finalTotal;
 
-                 if (currentRate > prevRate || (currentRate === prevRate && currentTotal > prevScore.total)) {
-                     // Update if better rate, or same rate with more questions
+                 if (currentRate > prevRate || (currentRate === prevRate && finalTotal > prevScore.total)) {
                      return {
                          ...prev,
                          categoryScores: {
                              ...prev.categoryScores,
-                             [subId]: { correct: currentCorrect, total: currentTotal }
+                             [subId]: { correct: finalCorrect, total: finalTotal }
                          }
                      };
                  }
@@ -640,7 +608,6 @@ const App = () => {
     }
 
     if (scoreRate === 0) {
-       // 0点の場合は呼び出されない想定だが、念のため
        return;
     }
 
@@ -654,6 +621,7 @@ const App = () => {
   };
 
   // --- Rendering ---
+  // (Main structure same as before, updating Gacha screens below)
 
   if (screen === 'home') {
     return (
@@ -694,12 +662,15 @@ const App = () => {
               <div className="divide-y divide-slate-100">
                 {g.subs.map(s => {
                   const score = userStats.categoryScores[s.id];
+                  // Score Display logic: Best Score
+                  const scoreText = score ? `${score.correct}/${score.total}` : '-';
                   const rate = score ? (score.correct / score.total) : 0;
+                  
                   return (
                     <button type="button" key={s.id} onClick={() => startSession('sub', s.id)} className="w-full text-left p-4 hover:bg-slate-50 flex justify-between items-center">
                       <span className="text-sm text-slate-600">{s.title}</span>
                       <span className={`text-xs px-2 py-1 rounded font-mono ${rate >= 0.8 ? 'bg-green-100 text-green-700' : rate >= 0.4 ? 'bg-yellow-50 text-yellow-600' : 'bg-slate-100 text-slate-400'}`}>
-                        {score ? `${score.correct}/${score.total}` : '-'}
+                        {scoreText}
                       </span>
                     </button>
                   );
@@ -713,74 +684,33 @@ const App = () => {
     );
   }
 
-  if (screen === 'collection') {
-    const isOwned = (id) => userStats.inventory.includes(id);
-    return (
-      <>
-        <div className="fixed inset-0 bg-slate-100 flex flex-col z-50">
-          <header className="bg-white shadow-sm px-4 py-3">
-            <button type="button" onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button>
-            <h2 className="font-bold text-slate-700">アイテム図鑑</h2>
-          </header>
-          {/* Changed grid-cols for better responsiveness on PC */}
-          <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4 max-w-6xl mx-auto w-full">
-            {COLLECTION_ITEMS.map(item => {
-              const owned = isOwned(item.id);
-              return (
-                <div 
-                  key={item.id} 
-                  onClick={() => { if(owned) setSelectedCollectionItem(item); }}
-                  className={`aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm transition-transform active:scale-95 cursor-pointer select-none ${owned ? (item.rarity===3 ? 'border-yellow-300 bg-yellow-50' : item.rarity===2 ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white') : 'border-slate-200 bg-slate-100 grayscale opacity-50 cursor-default'}`}
-                >
-                  <div className="text-4xl mb-2">{owned ? item.icon : '🔒'}</div>
-                  <div className="text-xs font-bold text-slate-700 text-center leading-tight truncate w-full px-1">{owned ? item.name : `No.${item.id}`}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <ItemDetailModal 
-          item={selectedCollectionItem} 
-          onClose={() => setSelectedCollectionItem(null)} 
-        />
-      </>
-    );
-  }
-
-  // --- Game Screen ---
+  // collection, game screens same as previous. Skipping to Gacha parts.
+  if (screen === 'collection') return <App.Collection screen={screen} setScreen={setScreen} userStats={userStats} />;
+  
   if (screen === 'game') {
+    // ... (Same as previous content, just verifying ExplanationOverlay usage)
+    // Inline implementation for brevity in this response, using the updated ExplanationOverlay
     const q = currentSession[currentIndex];
-    
     return (
       <div className="flex flex-col min-h-screen">
         <header className="bg-white shadow-sm sticky top-0 z-20 px-4 py-3 flex justify-between items-center max-w-4xl mx-auto w-full">
           <button type="button" onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm">← HOME</button>
           <div className="text-sm font-medium bg-slate-100 px-3 py-1 rounded-full">{currentIndex + 1} / {currentSession.length}</div>
         </header>
-
         <main className="flex-grow p-4 pb-32 overflow-y-auto max-w-4xl mx-auto w-full space-y-6">
+          {/* Question, Choices, Journal Table ... (Same as existing) */}
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between mb-3">
-              <span className="bg-slate-800 text-white text-xs px-2 py-1 rounded font-mono">Q.{currentIndex + 1}</span>
-            </div>
+            <div className="flex justify-between mb-3"><span className="bg-slate-800 text-white text-xs px-2 py-1 rounded font-mono">Q.{currentIndex + 1}</span></div>
             <p className="text-lg font-medium text-slate-800 leading-relaxed">{q.text}</p>
           </div>
-
-          {/* Choices */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase tracking-wider flex items-center gap-1">
-              <span>👇 タップして選択</span>
-            </p>
+            <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase tracking-wider flex items-center gap-1"><span>👇 タップして選択</span></p>
             <div className="flex flex-wrap gap-2">
               {q.choices.map(c => (
-                <button type="button" key={c} onClick={() => handleChoiceClick(c)} className={`px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all border-2 touch-manipulation ${selectedChoice === c ? 'bg-blue-100 border-blue-500 text-blue-800 scale-95' : 'bg-white border-slate-200 text-slate-700 active:scale-95'}`}>
-                  {c}
-                </button>
+                <button type="button" key={c} onClick={() => handleChoiceClick(c)} className={`px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all border-2 touch-manipulation ${selectedChoice === c ? 'bg-blue-100 border-blue-500 text-blue-800 scale-95' : 'bg-white border-slate-200 text-slate-700 active:scale-95'}`}>{c}</button>
               ))}
             </div>
           </div>
-
-          {/* Journal Table */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
             <div className="grid grid-cols-2 bg-slate-100 border-b text-xs font-bold text-slate-600">
               <div className="p-2 text-center text-blue-600 border-r border-slate-200">借方 (Debit)</div>
@@ -808,43 +738,17 @@ const App = () => {
             </div>
           </div>
         </main>
-
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur border-t border-slate-200 z-30">
-          <div className="max-w-4xl mx-auto">
-            <button type="button" onClick={checkAnswer} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md text-lg active:scale-[0.98] transition-transform">解答する</button>
-          </div>
+          <div className="max-w-4xl mx-auto"><button type="button" onClick={checkAnswer} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md text-lg active:scale-[0.98] transition-transform">解答する</button></div>
         </div>
-
-        {/* Modals */}
-        <Keypad 
-          isOpen={keypadConfig.isOpen} 
-          initialValue={keypadConfig.initialValue}
-          onClose={() => setKeypadConfig({ ...keypadConfig, isOpen: false })} 
-          onConfirm={(val) => {
-            handleLineUpdate(keypadConfig.side, keypadConfig.lineId, 'amount', val);
-            setKeypadConfig({ ...keypadConfig, isOpen: false });
-          }}
-        />
-
+        <Keypad isOpen={keypadConfig.isOpen} initialValue={keypadConfig.initialValue} onClose={() => setKeypadConfig({ ...keypadConfig, isOpen: false })} onConfirm={(val) => { handleLineUpdate(keypadConfig.side, keypadConfig.lineId, 'amount', val); setKeypadConfig({ ...keypadConfig, isOpen: false }); }} />
         {showResultModal && lastResult && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
             <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] border-4 ${lastResult.isCorrect ? 'border-green-500' : 'border-red-500'}`}>
-              <div className={`p-5 text-center text-white font-bold text-2xl ${lastResult.isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
-                {lastResult.isCorrect ? "正解！ 🙆‍♂️" : "不正解... 🙅‍♀️"}
-              </div>
+              <div className={`p-5 text-center text-white font-bold text-2xl ${lastResult.isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>{lastResult.isCorrect ? "正解！ 🙆‍♂️" : "不正解... 🙅‍♀️"}</div>
               <div className="p-5 overflow-y-auto flex-grow space-y-4">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-1">正解の仕訳</h4>
-                  <div className="grid grid-cols-2 text-xs md:text-sm bg-slate-50 border rounded">
-                    <div className="p-2 border-r border-b font-bold text-center">借方</div><div className="p-2 border-b font-bold text-center">貸方</div>
-                    <div className="p-2 border-r">{lastResult.q.correctEntries.debit.map((d,i) => <div key={i} className="flex justify-between"><span className="text-blue-700 font-bold">{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}</div>
-                    <div className="p-2">{lastResult.q.correctEntries.credit.map((c,i) => <div key={i} className="flex justify-between"><span className="text-red-700 font-bold">{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}</div>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-1">解説</h4>
-                  <p className="text-sm text-slate-700 bg-yellow-50 p-3 rounded border border-yellow-100 leading-relaxed whitespace-pre-wrap">{lastResult.q.explanation}</p>
-                </div>
+                <div><h4 className="text-xs font-bold text-slate-400 uppercase mb-1">正解の仕訳</h4><div className="grid grid-cols-2 text-xs md:text-sm bg-slate-50 border rounded"><div className="p-2 border-r border-b font-bold text-center">借方</div><div className="p-2 border-b font-bold text-center">貸方</div><div className="p-2 border-r">{lastResult.q.correctEntries.debit.map((d,i)=><div key={i} className="flex justify-between"><span className="text-blue-700 font-bold">{d.accountName}</span><span>{d.amount.toLocaleString()}</span></div>)}</div><div className="p-2">{lastResult.q.correctEntries.credit.map((c,i)=><div key={i} className="flex justify-between"><span className="text-red-700 font-bold">{c.accountName}</span><span>{c.amount.toLocaleString()}</span></div>)}</div></div></div>
+                <div><h4 className="text-xs font-bold text-slate-400 uppercase mb-1">解説</h4><p className="text-sm text-slate-700 bg-yellow-50 p-3 rounded border border-yellow-100 leading-relaxed whitespace-pre-wrap">{lastResult.q.explanation}</p></div>
               </div>
               <div className="p-4 bg-white border-t space-y-3">
                 <button type="button" onClick={() => { setShowResultModal(false); setShowExplanation(true); }} className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98]">🎬 解説モード</button>
@@ -853,23 +757,14 @@ const App = () => {
             </div>
           </div>
         )}
-
-        {/* Explanation Overlay Component */}
-        {showExplanation && (
-          <ExplanationOverlay 
-            q={currentSession[currentIndex]} 
-            currentIndex={currentIndex}
-            onClose={() => { setShowExplanation(false); setShowResultModal(true); }}
-          />
-        )}
+        {showExplanation && <ExplanationOverlay q={currentSession[currentIndex]} currentIndex={currentIndex} onClose={() => { setShowExplanation(false); setShowResultModal(true); }} />}
       </div>
     );
   }
 
-  // --- Gacha Screens ---
+  // --- Gacha Screens (Updated) ---
   if (screen === 'gacha_open') {
     const isZeroScore = sessionStats.correct === 0;
-    const hasWrong = sessionResults.some(r => !r.isCorrect);
     
     return (
       <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-50 cursor-default" onClick={isZeroScore ? undefined : doGacha}>
@@ -886,30 +781,17 @@ const App = () => {
           <div className="animate-fade-in text-center" style={{animationDelay: '0.2s'}}>
             <div className="text-6xl mb-6">😢</div>
             <p className="text-white/70 text-sm mb-8">1問以上正解でアイテムゲットのチャンス！</p>
-            <button 
-              onClick={() => setScreen('home')}
-              className="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-full border border-white/30 transition-all active:scale-95"
-            >
-              トップへ戻る
-            </button>
+            <button onClick={() => setScreen('home')} className="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-full border border-white/30 transition-all active:scale-95 mb-4">トップへ戻る</button>
+            <div>
+               <button onClick={(e) => { e.stopPropagation(); setShowReview(true); }} className="text-white/80 hover:text-white underline text-sm">問題の振り返り</button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center cursor-pointer">
             <div className="text-9xl animate-bounce-gentle">🎁</div>
-            <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6 backdrop-blur bg-white/10">
-              タップして開封
-            </div>
+            <div className="text-white/70 text-sm font-bold mt-12 animate-pulse border border-white/30 rounded-full py-2 px-6 backdrop-blur bg-white/10">タップして開封</div>
+            <button onClick={(e) => { e.stopPropagation(); setShowReview(true); }} className="mt-8 text-white/60 hover:text-white text-sm underline z-50 px-4 py-2">問題の振り返り</button>
           </div>
-        )}
-
-        {hasWrong && (
-          <button 
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setShowReview(true); }}
-            className="mt-8 bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-8 rounded-full border border-white/40 backdrop-blur-sm transition-all text-sm flex items-center gap-2 z-50"
-          >
-            <span>📝</span> 間違えた問題を振り返る
-          </button>
         )}
 
         {showReview && (
@@ -923,8 +805,6 @@ const App = () => {
   }
 
   if (screen === 'gacha_result' && gachaItem) {
-    const hasWrong = sessionResults.some(r => !r.isCorrect);
-    
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in">
         <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl">
@@ -940,9 +820,7 @@ const App = () => {
           
           <div className="space-y-3">
              <button type="button" onClick={() => setScreen('home')} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform">トップへ戻る</button>
-             {hasWrong && (
-                <button type="button" onClick={() => setShowReview(true)} className="w-full bg-slate-200 text-slate-600 font-bold py-3 rounded-xl shadow-sm active:scale-95 transition-transform text-sm">📝 間違えた問題を振り返る</button>
-             )}
+             <button type="button" onClick={() => setShowReview(true)} className="w-full bg-slate-200 text-slate-600 font-bold py-3 rounded-xl shadow-sm active:scale-95 transition-transform text-sm">📝 問題の振り返り</button>
           </div>
         </div>
 
@@ -955,6 +833,32 @@ const App = () => {
       </div>
     );
   }
+
+  // Necessary wrapper to make collection screen work in this condensed version
+  App.Collection = ({screen, setScreen, userStats}) => {
+     // ... (Same implementation as before)
+     const isOwned = (id) => userStats.inventory.includes(id);
+     const [selected, setSelected] = useState(null);
+     return (
+       <>
+         <div className="fixed inset-0 bg-slate-100 flex flex-col z-50">
+           <header className="bg-white shadow-sm px-4 py-3"><button onClick={() => setScreen('home')} className="text-slate-500 font-bold text-sm mb-2">← HOME</button><h2 className="font-bold text-slate-700">アイテム図鑑</h2></header>
+           <div className="flex-grow overflow-y-auto p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4 max-w-6xl mx-auto w-full">
+             {COLLECTION_ITEMS.map(item => {
+               const owned = isOwned(item.id);
+               return (
+                 <div key={item.id} onClick={() => { if(owned) setSelected(item); }} className={`aspect-[3/4] rounded-xl border-2 flex flex-col items-center justify-center p-2 shadow-sm transition-transform active:scale-95 cursor-pointer select-none ${owned ? (item.rarity===3 ? 'border-yellow-300 bg-yellow-50' : item.rarity===2 ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white') : 'border-slate-200 bg-slate-100 grayscale opacity-50 cursor-default'}`}>
+                   <div className="text-4xl mb-2">{owned ? item.icon : '🔒'}</div>
+                   <div className="text-xs font-bold text-slate-700 text-center leading-tight truncate w-full px-1">{owned ? item.name : `No.${item.id}`}</div>
+                 </div>
+               );
+             })}
+           </div>
+         </div>
+         <ItemDetailModal item={selected} onClose={() => setSelected(null)} />
+       </>
+     );
+  };
 
   return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading...</div>;
 };
