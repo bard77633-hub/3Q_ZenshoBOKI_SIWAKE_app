@@ -202,8 +202,9 @@ const RAW_QUESTIONS = [
       return q;
     }
   },
+  // [Returns & Discounts]
   {
-    id: 'md_05', major: 'merchandise', sub: 'returns',
+    id: 'md_05', major: 'merchandise', sub: 'returns_discounts',
     text: "掛けで仕入れた商品のうち、品質不良のため 5,000円 を返品した。",
     correctEntries: { debit: [{ accountName: "買掛金", amount: 5000 }], credit: [{ accountName: "仕入", amount: 5000 }] },
     choices: ["買掛金", "仕入", "現金", "売掛金"],
@@ -216,7 +217,7 @@ const RAW_QUESTIONS = [
     }
   },
   {
-    id: 'md_06', major: 'merchandise', sub: 'returns',
+    id: 'md_06', major: 'merchandise', sub: 'returns_discounts',
     text: "掛けで売り上げた商品のうち 8,000円 が品違いのため返品された。",
     correctEntries: { debit: [{ accountName: "売上", amount: 8000 }], credit: [{ accountName: "売掛金", amount: 8000 }] },
     choices: ["売上", "売掛金", "仕入", "現金"],
@@ -225,6 +226,32 @@ const RAW_QUESTIONS = [
       q.text = `掛けで売り上げた商品のうち ${Randomizer.fmt(amt)}円 が品違いのため返品された。`;
       q.correctEntries = { debit: [{ accountName: "売上", amount: amt }], credit: [{ accountName: "売掛金", amount: amt }] };
       q.explanationSteps = [{highlight:"返品された", entries:[{side:'debit',account:'売上',amount:amt}, {side:'credit',account:'売掛金',amount:amt}]}];
+      return q;
+    }
+  },
+  {
+    id: 'md_13', major: 'merchandise', sub: 'returns_discounts',
+    text: "掛けで仕入れた商品に傷があったため、代金から 2,000円 の値引きを受けた。",
+    correctEntries: { debit: [{ accountName: "買掛金", amount: 2000 }], credit: [{ accountName: "仕入", amount: 2000 }] },
+    choices: ["買掛金", "仕入", "現金", "売掛金"],
+    mutate: (q) => {
+      const amt = Randomizer.getAmount(2000, 0.2, 100);
+      q.text = `掛けで仕入れた商品に傷があったため、代金から ${Randomizer.fmt(amt)}円 の値引きを受けた。`;
+      q.correctEntries = { debit: [{ accountName: "買掛金", amount: amt }], credit: [{ accountName: "仕入", amount: amt }] };
+      q.explanationSteps = [{highlight:"値引きを受けた", entries:[{side:'debit',account:'買掛金',amount:amt}, {side:'credit',account:'仕入',amount:amt}], comment:"仕入代金の減額（値引き）は、返品と同様に逆仕訳で処理します。"}];
+      return q;
+    }
+  },
+  {
+    id: 'md_14', major: 'merchandise', sub: 'returns_discounts',
+    text: "掛けで売り上げた商品に汚れがあったため、代金から 3,000円 を値引きした。",
+    correctEntries: { debit: [{ accountName: "売上", amount: 3000 }], credit: [{ accountName: "売掛金", amount: 3000 }] },
+    choices: ["売上", "売掛金", "仕入", "現金"],
+    mutate: (q) => {
+      const amt = Randomizer.getAmount(3000, 0.2, 100);
+      q.text = `掛けで売り上げた商品に汚れがあったため、代金から ${Randomizer.fmt(amt)}円 を値引きした。`;
+      q.correctEntries = { debit: [{ accountName: "売上", amount: amt }], credit: [{ accountName: "売掛金", amount: amt }] };
+      q.explanationSteps = [{highlight:"値引きした", entries:[{side:'debit',account:'売上',amount:amt}, {side:'credit',account:'売掛金',amount:amt}], comment:"売上代金の減額（値引き）は、返品と同様に逆仕訳で処理します。"}];
       return q;
     }
   },
@@ -291,6 +318,7 @@ const RAW_QUESTIONS = [
     id: 'md_11', major: 'merchandise', sub: 'other_pay',
     text: "商品 45,000円 を売り上げ、代金は全額クレジットカード払い（信販会社への債権）となった。",
     correctEntries: { debit: [{ accountName: "売掛金", amount: 45000 }], credit: [{ accountName: "売上", amount: 45000 }] },
+    aliases: { debit: [{"売掛金": ["クレジット売掛金"]}] },
     choices: ["売掛金", "売上", "クレジット売掛金", "現金"],
     mutate: (q) => {
       const amt = Randomizer.getAmount(45000, 0.2, 1000);
@@ -366,6 +394,34 @@ const RAW_QUESTIONS = [
       q.text = `商品 ${Randomizer.fmt(amt)}円 を売り上げ、代金は約束手形を受け取った。`;
       q.correctEntries = { debit: [{ accountName: "受取手形", amount: amt }], credit: [{ accountName: "売上", amount: amt }] };
       q.explanationSteps = [{highlight:"手形を受け取った", entries:[{side:'debit',account:'受取手形',amount:amt}]}];
+      return q;
+    }
+  },
+  {
+    id: 'nt_09', major: 'notes', sub: 'notes_transfer',
+    text: "買掛金 150,000円 の支払いとして、所有する約束手形を裏書譲渡した。",
+    correctEntries: { debit: [{ accountName: "買掛金", amount: 150000 }], credit: [{ accountName: "受取手形", amount: 150000 }] },
+    choices: ["買掛金", "受取手形", "支払手形", "当座預金"],
+    mutate: (q) => {
+      const amt = Randomizer.getAmount(150000, 0.2, 1000);
+      q.text = `買掛金 ${Randomizer.fmt(amt)}円 の支払いとして、所有する約束手形を裏書譲渡した。`;
+      q.correctEntries = { debit: [{ accountName: "買掛金", amount: amt }], credit: [{ accountName: "受取手形", amount: amt }] };
+      q.explanationSteps = [{highlight:"裏書譲渡した", entries:[{side:'credit',account:'受取手形',amount:amt}], comment:"手形の権利を譲渡するので「受取手形」（資産）の減少です。"}];
+      return q;
+    }
+  },
+  {
+    id: 'nt_10', major: 'notes', sub: 'notes_transfer',
+    text: "約束手形 300,000円 を取引銀行で割り引き、割引料 5,000円 を差し引かれた残額を当座預金とした。",
+    correctEntries: { debit: [{ accountName: "当座預金", amount: 295000 }, { accountName: "手形売却損", amount: 5000 }], credit: [{ accountName: "受取手形", amount: 300000 }] },
+    choices: ["当座預金", "手形売却損", "受取手形", "支払利息"],
+    mutate: (q) => {
+      const total = Randomizer.getAmount(300000, 0.2, 1000);
+      const fee = Randomizer.round(total * 0.02, 100);
+      const net = total - fee;
+      q.text = `約束手形 ${Randomizer.fmt(total)}円 を取引銀行で割り引き、割引料 ${Randomizer.fmt(fee)}円 を差し引かれた残額を当座預金とした。`;
+      q.correctEntries = { debit: [{ accountName: "当座預金", amount: net }, { accountName: "手形売却損", amount: fee }], credit: [{ accountName: "受取手形", amount: total }] };
+      q.explanationSteps = [{highlight:"割り引き", entries:[{side:'credit',account:'受取手形',amount:total}]}, {highlight:"割引料", entries:[{side:'debit',account:'手形売却損',amount:fee}]}];
       return q;
     }
   },
@@ -534,6 +590,19 @@ const RAW_QUESTIONS = [
       q.text = `コピー用紙や文房具代 ${Randomizer.fmt(amt)}円 を現金で支払った。`;
       q.correctEntries = { debit: [{ accountName: "消耗品費", amount: amt }], credit: [{ accountName: "現金", amount: amt }] };
       q.explanationSteps = [{highlight:"文房具代", entries:[{side:'debit',account:'消耗品費',amount:amt}]}];
+      return q;
+    }
+  },
+  {
+    id: 'ae_10', major: 'assets_expenses', sub: 'expenses', // New Question
+    text: "事務用消耗品 10,000円 を購入し、代金は来月末払いとした。",
+    correctEntries: { debit: [{ accountName: "消耗品費", amount: 10000 }], credit: [{ accountName: "未払金", amount: 10000 }] },
+    choices: ["消耗品費", "未払金", "買掛金", "現金"],
+    mutate: (q) => {
+      const amt = Randomizer.getAmount(10000, 0.2, 1000);
+      q.text = `事務用消耗品 ${Randomizer.fmt(amt)}円 を購入し、代金は来月末払いとした。`;
+      q.correctEntries = { debit: [{ accountName: "消耗品費", amount: amt }], credit: [{ accountName: "未払金", amount: amt }] };
+      q.explanationSteps = [{highlight:"消耗品", entries:[{side:'debit',account:'消耗品費',amount:amt}]}, {highlight:"来月末払い", entries:[{side:'credit',account:'未払金',amount:amt}], comment:"商品以外の未払代金なので「未払金」です。"}];
       return q;
     }
   },
