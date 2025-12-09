@@ -48,31 +48,41 @@ const generateAutoSteps = (q, explText) => {
 
 // Smart adjustment: Replace numbers in manual steps with mutated numbers
 const adjustStepsForMutation = (originalSteps, originalQ, mutatedQ) => {
-  // Find changed amounts to create a replacement map
-  const replacements = [];
+  // Deep clone steps to avoid mutating the original definition
+  const newSteps = JSON.parse(JSON.stringify(originalSteps));
   
   const collect = (entries) => entries.debit.concat(entries.credit);
   const oldEntries = collect(originalQ.correctEntries);
   const newEntries = collect(mutatedQ.correctEntries);
   
-  // Map old amounts to new amounts based on index (assuming structure is preserved)
+  // Create a replacement map: "1,000" -> "1,200"
+  const replacements = [];
+  
+  // Strategy: Map by Account Name match. 
+  // If multiple same accounts exist (rare in L3), index order usually preserves mutation structure.
   oldEntries.forEach((o, i) => {
-     if (newEntries[i] && o.amount !== newEntries[i].amount) {
+     // Find corresponding entry in newEntries that matches account name
+     // (Using index i is usually safe because mutation creates a clone structure, but let's be robust)
+     const match = newEntries[i]; 
+     
+     if (match && match.accountName === o.accountName && match.amount !== o.amount) {
          const oldStr = o.amount.toLocaleString();
-         const newStr = newEntries[i].amount.toLocaleString();
-         // Avoid duplicate replacements
+         const newStr = match.amount.toLocaleString();
+         
+         // Only add if not already added to prevent double replacing
          if (!replacements.some(r => r.from === oldStr)) {
              replacements.push({ from: oldStr, to: newStr });
          }
      }
   });
 
-  // Deep clone and replace text
-  return originalSteps.map(step => {
+  // Apply replacements to comment and highlight text
+  return newSteps.map(step => {
       let newComment = step.comment;
       let newHighlight = step.highlight;
       
       replacements.forEach(rep => {
+          // Replace all occurrences
           if (newComment) newComment = newComment.split(rep.from).join(rep.to);
           if (newHighlight) newHighlight = newHighlight.split(rep.from).join(rep.to);
       });
@@ -481,6 +491,9 @@ const App = () => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [lastResult, setLastResult] = useState(null); 
   
+  // Transition State
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   // Review State
   const [sessionResults, setSessionResults] = useState([]); 
   const [showReview, setShowReview] = useState(false);
@@ -617,40 +630,45 @@ const App = () => {
   };
 
   const nextQuestion = () => {
-    setShowResultModal(false);
-    if (currentIndex + 1 < currentSession.length) {
-      setCurrentIndex(prev => prev + 1);
-      setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
-      setCreditLines([{ id: generateId(), accountName: null, amount: 0 }]);
-    } else {
-      // Session Ended: Update Best Score
-      if (sessionMode === 'sub') {
-         const subId = currentSession[0].sub;
-         if (subId) {
-             const finalCorrect = sessionStats.correct;
-             const finalTotal = currentSession.length;
-             
-             setUserStats(prev => {
-                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 };
-                 const prevRate = (prev.categoryScores[subId] ? prevScore.correct / prevScore.total : -1);
-                 const currentRate = finalCorrect / finalTotal;
+    setIsTransitioning(true); // Start loading state
+    
+    setTimeout(() => {
+        setShowResultModal(false);
+        if (currentIndex + 1 < currentSession.length) {
+          setCurrentIndex(prev => prev + 1);
+          setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
+          setCreditLines([{ id: generateId(), accountName: null, amount: 0 }]);
+        } else {
+          // Session Ended: Update Best Score
+          if (sessionMode === 'sub') {
+             const subId = currentSession[0].sub;
+             if (subId) {
+                 const finalCorrect = sessionStats.correct;
+                 const finalTotal = currentSession.length;
+                 
+                 setUserStats(prev => {
+                     const prevScore = prev.categoryScores[subId] || { correct: 0, total: 1 };
+                     const prevRate = (prev.categoryScores[subId] ? prevScore.correct / prevScore.total : -1);
+                     const currentRate = finalCorrect / finalTotal;
 
-                 if (currentRate > prevRate || (currentRate === prevRate && finalTotal > prevScore.total)) {
-                     return {
-                         ...prev,
-                         categoryScores: {
-                             ...prev.categoryScores,
-                             [subId]: { correct: finalCorrect, total: finalTotal }
-                         }
-                     };
-                 }
-                 return prev;
-             });
-         }
-      }
+                     if (currentRate > prevRate || (currentRate === prevRate && finalTotal > prevScore.total)) {
+                         return {
+                             ...prev,
+                             categoryScores: {
+                                 ...prev.categoryScores,
+                                 [subId]: { correct: finalCorrect, total: finalTotal }
+                             }
+                         };
+                     }
+                     return prev;
+                 });
+             }
+          }
 
-      setScreen('gacha_open');
-    }
+          setScreen('gacha_open');
+        }
+        setIsTransitioning(false); // End loading state
+    }, 1000); // 1 second delay
   };
 
   const doGacha = () => {
@@ -814,7 +832,14 @@ const App = () => {
               </div>
               <div className="p-4 bg-white border-t space-y-3">
                 <button type="button" onClick={() => { setShowResultModal(false); setShowExplanation(true); }} className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98]">🎬 解説モード</button>
-                <button type="button" onClick={nextQuestion} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98]">次の問題へ</button>
+                <button 
+                  type="button" 
+                  onClick={nextQuestion} 
+                  disabled={isTransitioning}
+                  className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isTransitioning ? "Next..." : "次の問題へ"}
+                </button>
               </div>
             </div>
           </div>
@@ -872,16 +897,13 @@ const App = () => {
 
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in overflow-hidden">
-        {/* Background Effects */}
+        {/* Special Background Effects */}
         {isSuperRare && (
           <>
             <div className="effect-sunburst"></div>
             <div className="effect-godrays"></div>
             <div className="effect-particles"></div>
           </>
-        )}
-        {isRare && (
-           <div className="effect-particles" style={{opacity: 0.3}}></div>
         )}
         
         <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl z-10">
