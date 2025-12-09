@@ -16,49 +16,69 @@ const shuffleArray = (array) => {
   return arr;
 };
 
-// Auto-generate explanation steps based on the ACTUAL amounts in the question object
-// This ensures that even if numbers are randomized, the explanation matches.
+// Fallback: Auto-generate explanation steps if no detailed manual steps exist
 const generateAutoSteps = (q, explText) => {
   const steps = [];
-  
-  // Step 1: Introduction
   steps.push({
     comment: "取引の内容を確認し、勘定科目を決定します。",
     highlight: "",
     debit: false, credit: false
   });
-
-  // Step 2: Debit Entries
   q.correctEntries.debit.forEach((d) => {
     steps.push({
-      comment: `借方（左側）に「${d.accountName}」を ${d.amount.toLocaleString()}円 計上します。\n（資産の増加、費用の発生など）`,
+      comment: `借方（左側）に「${d.accountName}」を ${d.amount.toLocaleString()}円 計上します。`,
       highlight: d.accountName, 
-      debit: true,
-      debitKey: d.accountName
+      debit: true, debitKey: d.accountName
     });
   });
-  
-  // Step 3: Credit Entries
   q.correctEntries.credit.forEach((c) => {
     steps.push({
-      comment: `貸方（右側）に「${c.accountName}」を ${c.amount.toLocaleString()}円 計上します。\n（資産の減少、負債・純資産の増加、収益の発生など）`,
+      comment: `貸方（右側）に「${c.accountName}」を ${c.amount.toLocaleString()}円 計上します。`,
       highlight: c.accountName,
-      credit: true,
-      creditKey: c.accountName
+      credit: true, creditKey: c.accountName
     });
   });
-  
-  // Step 4: Summary
-  // We use the static explanation text as a general summary of the rule.
   steps.push({
     comment: `最後に貸借の金額が一致していることを確認します。\n\n【ポイント】\n${explText}`,
     highlight: "",
-    debit: true,
-    credit: true,
-    showAll: true 
+    debit: true, credit: true, showAll: true 
   });
-  
   return steps;
+};
+
+// Smart adjustment: Replace numbers in manual steps with mutated numbers
+const adjustStepsForMutation = (originalSteps, originalQ, mutatedQ) => {
+  // Find changed amounts to create a replacement map
+  const replacements = [];
+  
+  const collect = (entries) => entries.debit.concat(entries.credit);
+  const oldEntries = collect(originalQ.correctEntries);
+  const newEntries = collect(mutatedQ.correctEntries);
+  
+  // Map old amounts to new amounts based on index (assuming structure is preserved)
+  oldEntries.forEach((o, i) => {
+     if (newEntries[i] && o.amount !== newEntries[i].amount) {
+         const oldStr = o.amount.toLocaleString();
+         const newStr = newEntries[i].amount.toLocaleString();
+         // Avoid duplicate replacements
+         if (!replacements.some(r => r.from === oldStr)) {
+             replacements.push({ from: oldStr, to: newStr });
+         }
+     }
+  });
+
+  // Deep clone and replace text
+  return originalSteps.map(step => {
+      let newComment = step.comment;
+      let newHighlight = step.highlight;
+      
+      replacements.forEach(rep => {
+          if (newComment) newComment = newComment.split(rep.from).join(rep.to);
+          if (newHighlight) newHighlight = newHighlight.split(rep.from).join(rep.to);
+      });
+      
+      return { ...step, comment: newComment, highlight: newHighlight };
+  });
 };
 
 // --- Components ---
@@ -236,21 +256,17 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   const [stepIndex, setStepIndex] = useState(-1);
   const steps = q.explanationSteps || [];
   
-  // ステップインデックスに基づく表示内容の決定
   const currentStep = stepIndex >= 0 && stepIndex < steps.length ? steps[stepIndex] : null;
   const currentComment = currentStep ? currentStep.comment : "まずは全体の流れを確認しましょう。（右下の▶ボタンで進む）";
   
-  // 表示済みアイテムの計算
   const revealedDebits = new Set();
   const revealedCredits = new Set();
   
-  // 現在のステップまでループして、表示すべきキーを収集
   for (let i = 0; i <= stepIndex; i++) {
       const s = steps[i];
       if (s) {
           if (s.debitKey) revealedDebits.add(s.debitKey);
           if (s.creditKey) revealedCredits.add(s.creditKey);
-          // サマリーステップ（最終ステップ付近）で強制表示フラグがある場合などを考慮
           if (s.showAll) {
              q.correctEntries.debit.forEach(d => revealedDebits.add(d.accountName));
              q.correctEntries.credit.forEach(c => revealedCredits.add(c.accountName));
@@ -258,12 +274,11 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
       }
   }
 
-  // テキストハイライト処理
-  const displayHtml = currentStep && currentStep.highlight
+  // Robust highlighting: If highlight text exists in q.text, replace it. Otherwise just return text.
+  const displayHtml = currentStep && currentStep.highlight && q.text.includes(currentStep.highlight)
     ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm transition-all duration-300">${currentStep.highlight}</span>`)
     : q.text;
 
-  // 借方・貸方のエリアハイライト（背景色）
   const isDebitHighlight = currentStep && currentStep.debit;
   const isCreditHighlight = currentStep && currentStep.credit;
 
@@ -327,7 +342,6 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
          </div>
       </div>
 
-      {/* Bottom Controls */}
       <div className="bg-white border-t border-slate-200 p-4 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10 pb-8">
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="relative bg-yellow-50 p-4 rounded-xl border border-yellow-200 min-h-[5rem] flex items-center shadow-sm transition-all">
@@ -451,11 +465,11 @@ const CollectionScreen = ({ setScreen, userStats }) => {
 
 // 6. Main App Component
 const App = () => {
-  const [screen, setScreen] = useState('home'); // home, game, result, collection, explanation, gacha
+  const [screen, setScreen] = useState('home'); 
   const [userStats, setUserStats] = useState({ correct: 0, total: 0, history: [], categoryScores: {}, inventory: [] });
   const [questions, setQuestions] = useState([]);
   const [currentSession, setCurrentSession] = useState([]);
-  const [sessionMode, setSessionMode] = useState(null); // 'comprehensive', 'major', 'sub'
+  const [sessionMode, setSessionMode] = useState(null); 
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Game State
@@ -465,40 +479,23 @@ const App = () => {
   const [keypadConfig, setKeypadConfig] = useState({ isOpen: false, lineId: null, side: null, initialValue: 0 });
   const [sessionStats, setSessionStats] = useState({ correct: 0 });
   const [showResultModal, setShowResultModal] = useState(false);
-  const [lastResult, setLastResult] = useState(null); // { isCorrect, q }
+  const [lastResult, setLastResult] = useState(null); 
   
-  // New States for Review
-  const [sessionResults, setSessionResults] = useState([]); // Array of { q, isCorrect }
+  // Review State
+  const [sessionResults, setSessionResults] = useState([]); 
   const [showReview, setShowReview] = useState(false);
 
   // Gacha State
   const [gachaItem, setGachaItem] = useState(null);
   const [isNewItem, setIsNewItem] = useState(false);
-  const [showGachaDetail, setShowGachaDetail] = useState(false); // For expanding gacha card details
+  const [showGachaDetail, setShowGachaDetail] = useState(false); 
 
   // Explanation State
   const [showExplanation, setShowExplanation] = useState(false);
 
   // Initialization
   useEffect(() => {
-    // Load Data
-    const merged = RAW_QUESTIONS.map(q => {
-      const expl = EXPLANATIONS[q.id];
-      const explText = expl ? expl.explanation : "解説準備中";
-      // We do NOT use the static steps from EXPLANATIONS here because we want dynamic number generation.
-      // We will generate the steps in startSession after mutation.
-      // However, we attach a default for initial display if needed.
-      const initialSteps = generateAutoSteps(q, explText);
-
-      return { 
-        ...q, 
-        explanation: explText, 
-        explanationSteps: initialSteps 
-      };
-    });
-    setQuestions(merged);
-
-    // Load Stats
+    setQuestions(RAW_QUESTIONS); 
     const saved = localStorage.getItem('zensho_bookkeeping_v3');
     if (saved) {
       try { setUserStats(JSON.parse(saved)); } catch(e) {}
@@ -526,10 +523,17 @@ const App = () => {
       // 1. Mutate the question (randomize numbers)
       const mutated = q.mutate ? q.mutate(clone) : clone;
       
-      // 2. Regenerate explanation steps based on the NEW numbers
-      // This solves the issue where explanation text matched the original but not the random mutation.
-      // We use the static explanation (summary text) but regenerate the step-by-step logic.
-      mutated.explanationSteps = generateAutoSteps(mutated, mutated.explanation);
+      // 2. Resolve Explanations with Numeric Adjustment
+      const manualExpl = EXPLANATIONS[q.id];
+      
+      if (manualExpl && manualExpl.steps) {
+         // Use the detailed manual steps, but adjust numbers to match the mutation
+         mutated.explanationSteps = adjustStepsForMutation(manualExpl.steps, q, mutated);
+         mutated.explanation = manualExpl.explanation;
+      } else {
+         // Fallback to generic steps if no manual steps exist
+         mutated.explanationSteps = generateAutoSteps(mutated, mutated.explanation || q.explanation);
+      }
       
       return mutated;
     });
@@ -868,13 +872,16 @@ const App = () => {
 
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in overflow-hidden">
-        {/* Special Background Effects */}
+        {/* Background Effects */}
         {isSuperRare && (
           <>
             <div className="effect-sunburst"></div>
             <div className="effect-godrays"></div>
             <div className="effect-particles"></div>
           </>
+        )}
+        {isRare && (
+           <div className="effect-particles" style={{opacity: 0.3}}></div>
         )}
         
         <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl z-10">
