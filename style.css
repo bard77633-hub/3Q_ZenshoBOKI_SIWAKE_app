@@ -108,41 +108,76 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 200%;
-  height: 200%;
+  width: 250%;
+  height: 250%;
   background: repeating-conic-gradient(
     from 0deg,
     rgba(255, 255, 255, 0) 0deg,
     rgba(255, 255, 255, 0) 10deg,
-    rgba(255, 255, 255, 0.1) 10deg,
-    rgba(255, 255, 255, 0.4) 20deg
+    rgba(255, 215, 0, 0.1) 10deg,
+    rgba(255, 215, 0, 0.3) 20deg
   );
-  animation: spinSlow 10s linear infinite;
+  animation: spinSlow 12s linear infinite;
   pointer-events: none;
   z-index: 0;
 }
 
-/* Sparkle/Pulse for Rare */
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+/* Rare Sparkle */
+@keyframes rarePulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(96, 165, 250, 0.5), 0 0 30px rgba(96, 165, 250, 0.3) inset; }
+  50% { box-shadow: 0 0 30px rgba(96, 165, 250, 0.8), 0 0 50px rgba(96, 165, 250, 0.5) inset; }
 }
 
-/* God Ray for Super Rare */
-@keyframes godRays {
-  0% { opacity: 0.5; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-  50% { opacity: 1; transform: translate(-50%, -50%) rotate(180deg) scale(1.2); }
-  100% { opacity: 0.5; transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+/* Super Rare Rainbow / Godrays */
+@keyframes rainbowBorder {
+  0% { border-color: #fbbf24; }
+  25% { border-color: #f87171; }
+  50% { border-color: #c084fc; }
+  75% { border-color: #60a5fa; }
+  100% { border-color: #fbbf24; }
 }
+
+@keyframes godRaysRotate {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 .effect-godrays {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 150%;
-  height: 150%;
-  background: radial-gradient(circle, rgba(253, 224, 71, 0.2) 0%, rgba(253, 224, 71, 0) 70%);
-  z-index: 0;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.8) 20deg,
+    transparent 40deg,
+    transparent 120deg,
+    rgba(255, 255, 255, 0.8) 140deg,
+    transparent 160deg
+  );
+  animation: godRaysRotate 8s linear infinite;
+  opacity: 0.3;
   pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+
+.effect-particles {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#fff 2px, transparent 2px), radial-gradient(#fff 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: 0 0, 25px 25px;
+  opacity: 0.5;
+  animation: particleMove 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes particleMove {
+  0% { background-position: 0 0, 25px 25px; }
+  100% { background-position: 50px 50px, 75px 75px; }
 }
 
 /* Unobtained Item */
@@ -156,7 +191,8 @@
 /* Common */
 .rarity-common {
   border-color: #cbd5e1;
-  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .text-common { color: #94a3b8; }
 .bg-common-badge { background-color: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
@@ -164,41 +200,63 @@
 /* Rare */
 .rarity-rare {
   border-color: #60a5fa;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  animation: pulseGlow 3s infinite;
-}
-.text-rare { color: #3b82f6; }
-.bg-rare-badge { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-
-/* Super Rare */
-.rarity-super {
-  border-color: #fbbf24;
-  background: radial-gradient(circle at 50% 30%, #fefce8, #fde047);
-  box-shadow: 0 0 25px rgba(250, 204, 21, 0.6);
+  background: linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%);
+  animation: rarePulse 3s infinite;
   position: relative;
   overflow: hidden;
 }
-/* Holographic sheen for Super Rare */
-.rarity-super::after {
+.rarity-rare::before {
   content: "";
   position: absolute;
   top: -50%;
   left: -50%;
   width: 200%;
   height: 200%;
+  background: linear-gradient(to bottom right, rgba(255,255,255,0) 40%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 60%);
+  transform: rotate(45deg);
+  animation: shine 4s infinite;
+}
+.text-rare { color: #2563eb; text-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+.bg-rare-badge { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+/* Super Rare */
+.rarity-super {
+  border-color: #fbbf24;
+  border-width: 6px;
+  background: radial-gradient(circle at 50% 30%, #fefce8, #facc15);
+  box-shadow: 0 0 30px rgba(250, 204, 21, 0.8), 0 0 10px rgba(255, 255, 255, 0.8) inset;
+  position: relative;
+  overflow: hidden;
+  animation: rainbowBorder 4s linear infinite;
+}
+/* Holographic sheen */
+.rarity-super::after {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
   background: linear-gradient(
-    45deg, 
+    115deg, 
     transparent 40%, 
-    rgba(255, 255, 255, 0.8) 45%, 
-    rgba(255, 255, 255, 0) 50%
+    rgba(255, 255, 255, 0.9) 45%, 
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 55%
   );
-  transform: rotate(30deg);
   animation: holoSheen 3s infinite linear;
   pointer-events: none;
+  mix-blend-mode: overlay;
 }
 @keyframes holoSheen {
-  0% { transform: translateY(0) rotate(30deg); }
-  100% { transform: translateY(50%) rotate(30deg); }
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(50%) rotate(20deg); }
 }
-.text-super { color: #d97706; }
-.bg-super-badge { background-color: #fffbeb; color: #d97706; border-color: #fde68a; }
+.text-super { 
+  color: #b45309; 
+  text-shadow: 0 2px 0 #fff, 0 0 10px rgba(251, 191, 36, 0.8);
+  background: linear-gradient(to right, #b45309, #d97706, #b45309);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.bg-super-badge { background-color: #fffbeb; color: #d97706; border-color: #fde68a; box-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }

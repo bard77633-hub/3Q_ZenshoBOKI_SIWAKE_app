@@ -16,6 +16,51 @@ const shuffleArray = (array) => {
   return arr;
 };
 
+// Auto-generate explanation steps based on the ACTUAL amounts in the question object
+// This ensures that even if numbers are randomized, the explanation matches.
+const generateAutoSteps = (q, explText) => {
+  const steps = [];
+  
+  // Step 1: Introduction
+  steps.push({
+    comment: "取引の内容を確認し、勘定科目を決定します。",
+    highlight: "",
+    debit: false, credit: false
+  });
+
+  // Step 2: Debit Entries
+  q.correctEntries.debit.forEach((d) => {
+    steps.push({
+      comment: `借方（左側）に「${d.accountName}」を ${d.amount.toLocaleString()}円 計上します。\n（資産の増加、費用の発生など）`,
+      highlight: d.accountName, 
+      debit: true,
+      debitKey: d.accountName
+    });
+  });
+  
+  // Step 3: Credit Entries
+  q.correctEntries.credit.forEach((c) => {
+    steps.push({
+      comment: `貸方（右側）に「${c.accountName}」を ${c.amount.toLocaleString()}円 計上します。\n（資産の減少、負債・純資産の増加、収益の発生など）`,
+      highlight: c.accountName,
+      credit: true,
+      creditKey: c.accountName
+    });
+  });
+  
+  // Step 4: Summary
+  // We use the static explanation text as a general summary of the rule.
+  steps.push({
+    comment: `最後に貸借の金額が一致していることを確認します。\n\n【ポイント】\n${explText}`,
+    highlight: "",
+    debit: true,
+    credit: true,
+    showAll: true 
+  });
+  
+  return steps;
+};
+
 // --- Components ---
 
 // 1. Calculator & Keypad
@@ -214,7 +259,6 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
   }
 
   // テキストハイライト処理
-  // 視認性向上のため、太字(font-bold)は使わず背景色のみ変更
   const displayHtml = currentStep && currentStep.highlight
     ? q.text.replace(currentStep.highlight, `<span class="bg-yellow-300 px-1 rounded shadow-sm transition-all duration-300">${currentStep.highlight}</span>`)
     : q.text;
@@ -437,30 +481,19 @@ const App = () => {
 
   // Initialization
   useEffect(() => {
-    // Helper to generate auto steps if none exist
-    const generateAutoSteps = (q, explText) => {
-      const steps = [];
-      steps.push({ comment: "取引の内容を確認し、勘定科目を決定します。", highlight: "", debit: false, credit: false });
-      q.correctEntries.debit.forEach((d) => {
-        steps.push({ comment: `借方（左側）に「${d.accountName}」を計上します。`, highlight: d.accountName, debit: true, debitKey: d.accountName });
-      });
-      q.correctEntries.credit.forEach((c) => {
-        steps.push({ comment: `貸方（右側）に「${c.accountName}」を計上します。`, highlight: c.accountName, credit: true, creditKey: c.accountName });
-      });
-      steps.push({ comment: `最後に金額を確認します。\n\n【解説】\n${explText}`, highlight: "", debit: true, credit: true, showAll: true });
-      return steps;
-    };
-
     // Load Data
     const merged = RAW_QUESTIONS.map(q => {
       const expl = EXPLANATIONS[q.id];
       const explText = expl ? expl.explanation : "解説準備中";
-      const steps = (expl && expl.steps) ? expl.steps : generateAutoSteps(q, explText);
+      // We do NOT use the static steps from EXPLANATIONS here because we want dynamic number generation.
+      // We will generate the steps in startSession after mutation.
+      // However, we attach a default for initial display if needed.
+      const initialSteps = generateAutoSteps(q, explText);
 
       return { 
         ...q, 
         explanation: explText, 
-        explanationSteps: steps 
+        explanationSteps: initialSteps 
       };
     });
     setQuestions(merged);
@@ -489,7 +522,16 @@ const App = () => {
     pool = shuffleArray(pool).slice(0, mode === 'comprehensive' ? 10 : 5);
     const session = pool.map(q => {
       const clone = JSON.parse(JSON.stringify(q));
-      return q.mutate ? q.mutate(clone) : clone;
+      
+      // 1. Mutate the question (randomize numbers)
+      const mutated = q.mutate ? q.mutate(clone) : clone;
+      
+      // 2. Regenerate explanation steps based on the NEW numbers
+      // This solves the issue where explanation text matched the original but not the random mutation.
+      // We use the static explanation (summary text) but regenerate the step-by-step logic.
+      mutated.explanationSteps = generateAutoSteps(mutated, mutated.explanation);
+      
+      return mutated;
     });
 
     setSessionMode(mode); 
@@ -831,6 +873,7 @@ const App = () => {
           <>
             <div className="effect-sunburst"></div>
             <div className="effect-godrays"></div>
+            <div className="effect-particles"></div>
           </>
         )}
         
@@ -841,7 +884,7 @@ const App = () => {
           {/* Card Container with onClick for Detail View */}
           <div 
             onClick={() => setShowGachaDetail(true)}
-            className={`w-48 h-64 mx-auto rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative cursor-pointer active:scale-95 transition-transform duration-200 ${gachaItem.rarity===3?'border-yellow-400 rarity-super':gachaItem.rarity===2?'border-blue-400 rarity-rare':'border-slate-300'}`}
+            className={`w-48 h-64 mx-auto rounded-2xl shadow-xl border-4 flex flex-col items-center justify-center bg-white mb-6 relative cursor-pointer active:scale-95 transition-transform duration-200 ${gachaItem.rarity===3?'rarity-super':gachaItem.rarity===2?'rarity-rare':'rarity-common'}`}
           >
              {isNewItem && <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow animate-bounce z-20">NEW</div>}
              <div className="text-7xl mb-2 drop-shadow-md z-10">{gachaItem.icon}</div>
