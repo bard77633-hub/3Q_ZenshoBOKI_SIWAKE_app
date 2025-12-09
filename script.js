@@ -257,9 +257,9 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
                  {q.correctEntries.debit.map((d, i) => {
                    const isVisible = revealedDebits.has(d.accountName);
                    return (
-                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0 border-blue-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
-                       <span className="font-bold text-slate-700">{d.accountName}</span>
-                       <span className="font-mono text-slate-500">{d.amount.toLocaleString()}</span>
+                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 gap-2 md:gap-8 ${isVisible ? 'opacity-100 translate-y-0 border-blue-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
+                       <span className="font-bold text-slate-700 text-left shrink-0">{d.accountName}</span>
+                       <span className="font-mono text-slate-500 text-right shrink whitespace-nowrap">{d.amount.toLocaleString()}</span>
                      </div>
                    );
                  })}
@@ -271,9 +271,9 @@ const ExplanationOverlay = ({ q, currentIndex, onClose }) => {
                  {q.correctEntries.credit.map((c, i) => {
                    const isVisible = revealedCredits.has(c.accountName);
                    return (
-                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0 border-red-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
-                       <span className="font-bold text-slate-700">{c.accountName}</span>
-                       <span className="font-mono text-slate-500">{c.amount.toLocaleString()}</span>
+                     <div key={i} className={`flex justify-between items-center p-2 rounded border transition-all duration-500 gap-2 md:gap-8 ${isVisible ? 'opacity-100 translate-y-0 border-red-100 bg-white shadow-sm' : 'opacity-0 translate-y-2 border-transparent'}`}>
+                       <span className="font-bold text-slate-700 text-left shrink-0">{c.accountName}</span>
+                       <span className="font-mono text-slate-500 text-right shrink whitespace-nowrap">{c.amount.toLocaleString()}</span>
                      </div>
                    );
                  })}
@@ -371,6 +371,7 @@ const App = () => {
   const [userStats, setUserStats] = useState({ correct: 0, total: 0, history: [], categoryScores: {}, inventory: [] });
   const [questions, setQuestions] = useState([]);
   const [currentSession, setCurrentSession] = useState([]);
+  const [sessionMode, setSessionMode] = useState(null); // 'comprehensive', 'major', 'sub'
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Game State
@@ -487,6 +488,7 @@ const App = () => {
       return q.mutate ? q.mutate(clone) : clone;
     });
 
+    setSessionMode(mode); // Save current mode for stats update
     setCurrentSession(session);
     setSessionResults([]); // Reset results for new session
     setCurrentIndex(0);
@@ -550,29 +552,17 @@ const App = () => {
 
     const isCorrect = JSON.stringify(dNorm) === JSON.stringify(dCorrect) && JSON.stringify(cNorm) === JSON.stringify(cCorrect);
 
+    // Update global total stats (accumulated) but NOT category scores yet
     if (isCorrect) {
       setSessionStats(prev => ({ ...prev, correct: prev.correct + 1 }));
       setUserStats(prev => ({ 
         ...prev, 
         correct: prev.correct + 1, 
         total: prev.total + 1,
-        categoryScores: { ...prev.categoryScores, [q.sub]: (prev.categoryScores[q.sub] || {correct:0, total:0}) } 
+        // Category scores update removed from here to handle session-best logic later
       }));
     } else {
       setUserStats(prev => ({ ...prev, total: prev.total + 1 }));
-    }
-    
-    if (q.sub) {
-        setUserStats(prev => {
-            const currentSub = prev.categoryScores[q.sub] || { correct: 0, total: 0 };
-            return {
-                ...prev,
-                categoryScores: {
-                    ...prev.categoryScores,
-                    [q.sub]: { correct: currentSub.correct + (isCorrect ? 1 : 0), total: currentSub.total + 1 }
-                }
-            };
-        });
     }
 
     setSessionResults(prev => [...prev, { q, isCorrect }]); // Track result
@@ -587,6 +577,44 @@ const App = () => {
       setDebitLines([{ id: generateId(), accountName: null, amount: 0 }]);
       setCreditLines([{ id: generateId(), accountName: null, amount: 0 }]);
     } else {
+      // Session Ended: Update Category Best Scores
+      if (sessionMode === 'sub') {
+         // Since we are in sub mode, all questions belong to the same sub category (or we pick the first one)
+         const subId = currentSession[0].sub;
+         // Ensure consistency
+         if (subId) {
+             const finalSessionCorrect = sessionStats.correct + (lastResult.isCorrect && currentIndex + 1 === currentSession.length && !sessionResults.find(r=>r.q.id===lastResult.q.id) ? 1 : 0);
+             // Note: sessionStats.correct tracks state, but state updates may lag if triggered in same render cycle as checkAnswer. 
+             // However, nextQuestion is user triggered, so sessionStats should be up to date relative to checkAnswer.
+             // We can trust sessionStats.correct here.
+             
+             const currentCorrect = sessionStats.correct;
+             const currentTotal = currentSession.length;
+             
+             setUserStats(prev => {
+                 const prevScore = prev.categoryScores[subId] || { correct: 0, total: 0 };
+                 
+                 // If total is 0 or different from currentTotal (e.g. legacy data), treat as new.
+                 // We want to keep the "Best Score" (Highest accuracy).
+                 // Comparison: (New Correct / New Total) vs (Old Correct / Old Total)
+                 const prevRate = prevScore.total > 0 ? (prevScore.correct / prevScore.total) : -1;
+                 const currentRate = currentCorrect / currentTotal;
+
+                 if (currentRate > prevRate || (currentRate === prevRate && currentTotal > prevScore.total)) {
+                     // Update if better rate, or same rate with more questions
+                     return {
+                         ...prev,
+                         categoryScores: {
+                             ...prev.categoryScores,
+                             [subId]: { correct: currentCorrect, total: currentTotal }
+                         }
+                     };
+                 }
+                 return prev;
+             });
+         }
+      }
+
       setScreen('gacha_open');
     }
   };
@@ -895,6 +923,8 @@ const App = () => {
   }
 
   if (screen === 'gacha_result' && gachaItem) {
+    const hasWrong = sessionResults.some(r => !r.isCorrect);
+    
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 animate-fade-in">
         <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden shadow-2xl">
@@ -906,9 +936,22 @@ const App = () => {
              <div className="font-bold text-slate-700 text-lg px-2">{gachaItem.name}</div>
           </div>
           <div className="text-2xl font-black text-slate-400 mb-2">{gachaItem.rarity===3?'SUPER RARE':gachaItem.rarity===2?'RARE':'COMMON'}</div>
-          <p className="text-slate-500 text-xs mb-8">{gachaItem.desc}</p>
-          <button type="button" onClick={() => setScreen('home')} className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform">トップへ戻る</button>
+          <p className="text-slate-500 text-xs mb-6 h-8 leading-tight overflow-hidden">{gachaItem.desc.substring(0, 40)}...</p>
+          
+          <div className="space-y-3">
+             <button type="button" onClick={() => setScreen('home')} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform">トップへ戻る</button>
+             {hasWrong && (
+                <button type="button" onClick={() => setShowReview(true)} className="w-full bg-slate-200 text-slate-600 font-bold py-3 rounded-xl shadow-sm active:scale-95 transition-transform text-sm">📝 間違えた問題を振り返る</button>
+             )}
+          </div>
         </div>
+
+        {showReview && (
+          <ReviewModal 
+            results={sessionResults} 
+            onClose={(e) => { if(e) e.stopPropagation(); setShowReview(false); }} 
+          />
+        )}
       </div>
     );
   }
